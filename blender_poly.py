@@ -10,6 +10,38 @@ bl_info = {
 
 import bpy
 
+#breakpoint = bpy.types.bp.bp
+__package__ = "blender_poly"
+
+class BlenderPolyPreferences(bpy.types.AddonPreferences):
+    bl_idname = __package__
+    
+    def draw(self, context):
+        props = context.window_manager.poly
+        layout = self.layout
+        preferences = context.user_preferences.addons[__package__].preferences
+        
+#        row = layout.row()
+#        row.prop(preferences, 'installFolder')
+        
+        row = layout.row()
+        row.prop(props, "api_key")
+        
+        row = layout.row()
+        row.scale_y = 1.25
+        row.operator("scene.poly_install_assets", icon='SAVE_PREFS')
+
+class BlenderPolyInstallAssets(bpy.types.Operator):
+    """Save the Blender Poly assets filepath"""
+    bl_idname = "scene.poly_install_assets"
+    bl_label = "Save Settings"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        bpy.ops.wm.save_userpref()
+
+        return {'FINISHED'}
+    
 class BlenderPolyProps(bpy.types.PropertyGroup):
     category_type = bpy.props.EnumProperty(
         items = [('featured', 'Featured', 'featured'),
@@ -76,12 +108,6 @@ class LayoutPolyPanel(bpy.types.Panel):
         col.prop(scene, "frame_start")
         col.prop(scene, "frame_end")
 
-        # Big render button
-        layout.label(text="Big Button:")
-        row = layout.row()
-        row.scale_y = 3.0
-        row.operator("render.render")
-
         # Different sizes in a row
         layout.label(text="Different button sizes:")
         row = layout.row(align=True)
@@ -95,28 +121,41 @@ class LayoutPolyPanel(bpy.types.Panel):
         
         row = layout.row(align=True)
         row.prop(props, "category_type")
-
-        row = layout.row(align=True)
-        row.prop(props, "api_key")
         
         row = layout.row(align=True)
         col = row.column()
-        col.operator("scene.previous_mat_item", icon="TRIA_LEFT", text="")
-        col = row.column()
-        col = row.column()
-        col.operator("scene.next_mat_item", icon="TRIA_RIGHT", text="")
+        col.scale_y = 7
         
-        row = layout.row(align=True)
+        col.operator("scene.previous_mat_item", icon = "TRIA_LEFT", text = "")
+        col = row.column()
+        col.scale_y = 1
+        col.template_icon_view(wm, "my_mat_previews_all", show_labels = True)
+#        col.label(matNameNew.title().replace("_", " "))
+        
+        col = row.column()
+        col.scale_y = 7
+        col.operator("scene.next_mat_item", icon = "TRIA_RIGHT", text = "")
+        
+        row = layout.row(align = True)
         row.scale_y = 2.0
         row.operator("render.render", text = "Load")
+
+#class BlenderPolyAssets(bpy.types.Operator):
+#    pass
         
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(LayoutPolyPanel)
+#    bpy.utils.register_class(BlenderPolyAssets)
+    bpy.utils.register_class(BlenderPolyPreferences)
+    bpy.utils.register_class(BlenderPolyInstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
 
 def unregister():
+    bpy.utils.unregister_class(BlenderPolyInstallAssets)
+    bpy.utils.unregister_class(BlenderPolyPreferences)
+#    bpy.utils.unregister_class(BlenderPolyAssets)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
