@@ -9,23 +9,42 @@ bl_info = {
 }
 
 import bpy
+import requests
+import json
 
 #breakpoint = bpy.types.bp.bp
 __package__ = "blender_poly"
 
+def enum_previews_from_model_previews_all(self, context):
+
+    if context is None:
+        return []
+
+    wm = context.window_manager
+    preferences = context.user_preferences.addons[__package__].preferences
+    
+    return []
+    
+def change_image_model_all(self,context):
+    pass
+    
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
-    
+
+    polyApiKey = bpy.props.StringProperty (
+        name = "API Key",
+        default = "",
+        description = "Input the Poly's API Key",
+        subtype = 'BYTE_STRING'
+        )
+           
     def draw(self, context):
         props = context.window_manager.poly
         layout = self.layout
         preferences = context.user_preferences.addons[__package__].preferences
         
-#        row = layout.row()
-#        row.prop(preferences, 'installFolder')
-        
         row = layout.row()
-        row.prop(props, "api_key")
+        row.prop(preferences, 'polyApiKey')
         
         row = layout.row()
         row.scale_y = 1.25
@@ -60,8 +79,14 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         ],
         name = "Category Type",
         default = "featured")
-    api_key = bpy.props.StringProperty(
-        name = "API Key")
+    keywords = bpy.props.StringProperty(name = 'Keywords', description = 'Keywords')
+    curated = bpy.props.BoolProperty(name = 'Curated', description = 'Curated')
+    pageSize = bpy.props.IntProperty(name = 'Page size', description = 'Page size', default = 20, min = 1, max = 100)
+    orderBy = bpy.props.EnumProperty(
+        items = [('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
+        name = 'Order by',
+        default = 'BEST')
+    pageToken = ''
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -78,58 +103,34 @@ class LayoutPolyPanel(bpy.types.Panel):
         wm = context.window_manager
 
         scene = context.scene
-
-        # Create a simple row.
-        layout.label(text=" Simple Row:")
-
-        row = layout.row()
-        row.prop(scene, "frame_start")
-        row.prop(scene, "frame_end")
-
-        # Create an row where the buttons are aligned to each other.
-        layout.label(text=" Aligned Row:")
-
-        row = layout.row(align=True)
-        row.prop(scene, "frame_start")
-        row.prop(scene, "frame_end")
-
-        # Create two columns, by using a split layout.
-        split = layout.split()
-
-        # First column
-        col = split.column()
-        col.label(text="Column One:")
-        col.prop(scene, "frame_end")
-        col.prop(scene, "frame_start")
-
-        # Second column, aligned
-        col = split.column(align=True)
-        col.label(text="Column Two:")
-        col.prop(scene, "frame_start")
-        col.prop(scene, "frame_end")
-
-        # Different sizes in a row
-        layout.label(text="Different button sizes:")
-        row = layout.row(align=True)
-        row.operator("render.render")
-
-        sub = row.row()
-        sub.scale_x = 2.0
-        sub.operator("render.render")
-
-        row.operator("render.render")
         
         row = layout.row(align=True)
         row.prop(props, "category_type")
         
         row = layout.row(align=True)
+        row.prop(props, "orderBy")
+
+        row = layout.row(align=True)
+        row.prop(props, "pageSize")
+        
+        row = layout.row(align=True)
+        row.prop(props, "curated")
+        
+        row = layout.row(align=True)
+        row.prop(props, "keywords")
+        
+        row = layout.row(align = True)
+        row.scale_y = 2.0
+        row.operator("render.render", text = "Load")
+
+        row = layout.row(align=True)
         col = row.column()
         col.scale_y = 7
-        
         col.operator("scene.previous_mat_item", icon = "TRIA_LEFT", text = "")
+
         col = row.column()
         col.scale_y = 1
-        col.template_icon_view(wm, "my_mat_previews_all", show_labels = True)
+        col.template_icon_view(wm, "poly_model_previews_all", show_labels = True)
 #        col.label(matNameNew.title().replace("_", " "))
         
         col = row.column()
@@ -138,28 +139,44 @@ class LayoutPolyPanel(bpy.types.Panel):
         
         row = layout.row(align = True)
         row.scale_y = 2.0
-        row.operator("render.render", text = "Load")
+        row.operator("blender_poly.test", text = "Test")
 
-#class BlenderPolyAssets(bpy.types.Operator):
-#    pass
+class BlenderPolyAssets(bpy.types.Operator):
+    bl_idname = "blender_poly.test"
+    bl_label = "Test Operator"
+    
+    def execute(self, context):
+        url = "https://poly.googleapis.com/v1/assets"
+        props = context.window_manager.poly
+        preferences = context.user_preferences.addons[__package__].preferences
+        payload = {'key': preferences.polyApiKey, 'format': 'OBJ', 'category': props.category_type}
+        
+        r = requests.get(url, params=payload)
+        
+        print (r.url)
+        print (r.text)
+        
+        return {'FINISHED'}
         
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(LayoutPolyPanel)
-#    bpy.utils.register_class(BlenderPolyAssets)
+    bpy.utils.register_class(BlenderPolyAssets)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
+    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
 
 def unregister():
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
-#    bpy.utils.unregister_class(BlenderPolyAssets)
+    bpy.utils.unregister_class(BlenderPolyAssets)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
     try:
+        del bpy.types.WindowManager.poly_model_previews_all
         del bpy.types.WindowManager.poly
     except:
         pass
