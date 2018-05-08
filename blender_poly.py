@@ -63,9 +63,10 @@ class BlenderPolyInstallAssets(bpy.types.Operator):
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
     category_type = bpy.props.EnumProperty(
-        items = [('featured', 'Featured', 'featured'),
-            ('uploads', 'Your Uploads', 'uploads'),
-            ('likes', 'Your Likes', 'likes'),
+        items = [
+#            ('featured', 'Featured', 'featured'),
+#            ('uploads', 'Your Uploads', 'uploads'),
+#            ('likes', 'Your Likes', 'likes'),
             ('animal', 'Animals and Creatures', 'animal'),
             ('architecture', 'Architecture', 'architecture'),
             ('art', 'Art', 'art'),
@@ -73,12 +74,20 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
             ('nature', 'Nature', 'nature'),
             ('objects', 'Objects', 'objects'),
             ('people', 'People and Characters', 'people'),
-            ('place', 'Places and Scenes', 'place'),
+            ('scenes', 'Places and Scenes', 'scenes'),
             ('technology', 'Technology', 'technology'),
             ('transport', 'Transport', 'transport')
         ],
         name = "Category Type",
-        default = "featured")
+        default = "animal")
+    maxComplexity = bpy.props.EnumProperty(
+        items = [
+            ('COMPLEX', 'COMPLEX', 'COMPLEX'),
+            ('MEDIUM', 'MEDIUM', 'MEDIUM'),
+            ('SIMPLE', 'SIMPLE', 'SIMPLE')
+        ],
+        name = "Max Complexity",
+        default = "COMPLEX")
     keywords = bpy.props.StringProperty(name = 'Keywords', description = 'Keywords')
     curated = bpy.props.BoolProperty(name = 'Curated', description = 'Curated')
     pageSize = bpy.props.IntProperty(name = 'Page size', description = 'Page size', default = 20, min = 1, max = 100)
@@ -107,6 +116,9 @@ class LayoutPolyPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(props, "category_type")
         
+        row = layout.row(align=True)
+        row.prop(props, "maxComplexity")
+
         row = layout.row(align=True)
         row.prop(props, "orderBy")
 
@@ -149,13 +161,21 @@ class BlenderPolyAssets(bpy.types.Operator):
         url = "https://poly.googleapis.com/v1/assets"
         props = context.window_manager.poly
         preferences = context.user_preferences.addons[__package__].preferences
-        payload = {'key': preferences.polyApiKey, 'format': 'OBJ', 'category': props.category_type}
+        payload = {'key': preferences.polyApiKey, 'format': 'OBJ',
+            'category': props.category_type,
+            'maxComplexity': props.maxComplexity,
+            'curated': props.curated,
+            'keywords': props.keywords,
+            'pageSize': props.pageSize,
+            'orderBy': props.orderBy,
+#            'pageToken': props.pageToken
+        }
         
         r = requests.get(url, params=payload)
         
+        print (r.json())
         print (r.url)
-        print (r.text)
-        
+            
         return {'FINISHED'}
         
 def register():
