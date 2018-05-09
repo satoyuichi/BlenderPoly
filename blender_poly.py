@@ -11,9 +11,11 @@ bl_info = {
 import bpy
 import requests
 import json
+from pathlib import Path
 
 #breakpoint = bpy.types.bp.bp
 __package__ = "blender_poly"
+BLENDER_POLY_PATH = 'BlenderPoly'
 
 def enum_previews_from_model_previews_all(self, context):
 
@@ -160,6 +162,12 @@ class BlenderPolyAssets(bpy.types.Operator):
     def execute(self, context):
         url = "https://poly.googleapis.com/v1/assets"
         props = context.window_manager.poly
+
+        tmp_path = Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+
+        if not tmp_path.exists ():
+            tmp_path.mkdir ()
+        
         preferences = context.user_preferences.addons[__package__].preferences
         payload = {'key': preferences.polyApiKey, 'format': 'OBJ',
             'category': props.category_type,
@@ -173,9 +181,18 @@ class BlenderPolyAssets(bpy.types.Operator):
         
         r = requests.get(url, params=payload)
         
-        print (r.json())
-        print (r.url)
+        json = r.json()
+        
+        for asset in json['assets']:
+            thumbnail_url = asset['thumbnail']['url']
+            thumbnail = requests.get(thumbnail_url)
             
+            with tmp_path.joinpath (asset['thumbnail']['relativePath']).open (mode='wb') as f:
+                f.write (thumbnail.content)
+        
+#        print (r.text)
+#        print (r.url)
+
         return {'FINISHED'}
         
 def register():
