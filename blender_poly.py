@@ -182,13 +182,18 @@ class BlenderPolyAssets(bpy.types.Operator):
         r = requests.get(url, params=payload)
         
         json = r.json()
-        
+
+        if not 'assets' in json.keys ():
+            return {'INTERFACE'}
+
         for asset in json['assets']:
             thumbnail_url = asset['thumbnail']['url']
-            thumbnail = requests.get(thumbnail_url)
             
-            with tmp_path.joinpath (asset['thumbnail']['relativePath']).open (mode='wb') as f:
-                f.write (thumbnail.content)
+            if not tmp_path.joinpath (asset['thumbnail']['relativePath']).exists ():
+                thumbnail = requests.get(thumbnail_url)
+            
+                with tmp_path.joinpath (asset['thumbnail']['relativePath']).open (mode='wb') as f:
+                    f.write (thumbnail.content)
         
 #        print (r.text)
 #        print (r.url)
