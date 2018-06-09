@@ -17,18 +17,73 @@ from pathlib import Path
 __package__ = "blender_poly"
 BLENDER_POLY_PATH = 'BlenderPoly'
 
-def enum_previews_from_model_previews_all(self, context):
+preview_collections = {}
+blender_poly_category_items = [
+#            ('featured', 'Featured', 'featured'),
+#            ('uploads', 'Your Uploads', 'uploads'),
+#            ('likes', 'Your Likes', 'likes'),
+    ('animal', 'Animals and Creatures', 'animal'),
+    ('architecture', 'Architecture', 'architecture'),
+    ('art', 'Art', 'art'),
+    ('food', 'Food and Drink', 'food'),
+    ('nature', 'Nature', 'nature'),
+    ('objects', 'Objects', 'objects'),
+    ('people', 'People and Characters', 'people'),
+    ('scenes', 'Places and Scenes', 'scenes'),
+    ('technology', 'Technology', 'technology'),
+    ('transport', 'Transport', 'transport')
+]
 
+def enum_previews_from_model_previews_all(self, context):
+    """EnumProperty callback"""
     if context is None:
         return []
 
     wm = context.window_manager
     preferences = context.user_preferences.addons[__package__].preferences
+    props = context.window_manager.poly
     
-    return []
+    enum_items_all = []
+    directory = Path(context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+
+    filepath_list = list(Path(directory).glob('**/*'))
+    
+#    print(filepath_list)
+    
+    for filepath in filepath_list:
+        comp_path = str(filepath.resolve())
+        print (comp_path)
+        pcoll = preview_collections[props.category_type]
+        thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
+        enum_items_all.append((comp_path, props.category_type, comp_path, thumb.icon_id))
+        
+    return enum_items_all
     
 def change_image_model_all(self,context):
     pass
+
+class BlenderPolyUIPanel(bpy.types.Panel):
+    """Creates a Panel in the material tab"""
+    bl_label = "Blender Poly"
+    bl_idname = "OBJECT_PT_blender_poly_previews"
+    bl_space_type = "PROPERTIES"
+    bl_region_type = "WINDOW"
+    bl_context = "object"
+    
+    @classmethod
+    def poll(cls, context):
+        return True
+
+    def draw(self, context):
+        layout = self.layout
+        wm = context.window_manager
+        preferences = context.user_preferences.addons[__package__].preferences
+        props = context.window_manager.poly
+        
+        row = layout.row()
+        col = row.column()
+        
+        col.template_icon_view(props, "preview_icons", show_labels=False)
     
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -65,21 +120,7 @@ class BlenderPolyInstallAssets(bpy.types.Operator):
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
     category_type = bpy.props.EnumProperty(
-        items = [
-#            ('featured', 'Featured', 'featured'),
-#            ('uploads', 'Your Uploads', 'uploads'),
-#            ('likes', 'Your Likes', 'likes'),
-            ('animal', 'Animals and Creatures', 'animal'),
-            ('architecture', 'Architecture', 'architecture'),
-            ('art', 'Art', 'art'),
-            ('food', 'Food and Drink', 'food'),
-            ('nature', 'Nature', 'nature'),
-            ('objects', 'Objects', 'objects'),
-            ('people', 'People and Characters', 'people'),
-            ('scenes', 'Places and Scenes', 'scenes'),
-            ('technology', 'Technology', 'technology'),
-            ('transport', 'Transport', 'transport')
-        ],
+        items = blender_poly_category_items,
         name = "Category Type",
         default = "animal")
     maxComplexity = bpy.props.EnumProperty(
@@ -98,6 +139,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name = 'Order by',
         default = 'BEST')
     pageToken = ''
+    preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -165,8 +207,10 @@ class BlenderPolyAssets(bpy.types.Operator):
 
         tmp_path = Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
 
+        print(tmp_path)
+        
         if not tmp_path.exists ():
-            tmp_path.mkdir ()
+            tmp_path.mkdir (parents=True)
         
         preferences = context.user_preferences.addons[__package__].preferences
         payload = {'key': preferences.polyApiKey, 'format': 'OBJ',
@@ -206,17 +250,27 @@ def register():
     bpy.utils.register_class(BlenderPolyAssets)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
+    bpy.utils.register_class(BlenderPolyUIPanel)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
     bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
 
+    for category in blender_poly_category_items:
+        pcoll = bpy.utils.previews.new ()
+        preview_collections [category[0]] = pcoll
+
 def unregister():
+    bpy.utils.unregister_class(BlenderPolyUIPanel)
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssets)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
+    for pcoll in preview_collections.values():
+        bpy.utils.previews.remove(pcoll)
+    preview_collections.clear()
+    
     try:
         del bpy.types.WindowManager.poly_model_previews_all
         del bpy.types.WindowManager.poly
