@@ -11,6 +11,7 @@ bl_info = {
 import bpy
 import requests
 import json
+import re
 from pathlib import Path
 
 #breakpoint = bpy.types.bp.bp
@@ -45,7 +46,11 @@ def enum_previews_from_model_previews_all(self, context):
     
     enum_items_all = []
     directory = Path(context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
-
+    pcoll = preview_collections[props.category_type]
+    
+    if directory == pcoll.previews_previews_dir_all:
+        return pcoll.previews_previews_all
+        
     filepath_list = list(Path(directory).glob('**/*'))
     
 #    print(filepath_list)
@@ -53,11 +58,13 @@ def enum_previews_from_model_previews_all(self, context):
     for filepath in filepath_list:
         comp_path = str(filepath.resolve())
         print (comp_path)
-        pcoll = preview_collections[props.category_type]
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
-        enum_items_all.append((comp_path, props.category_type, comp_path, thumb.icon_id))
-        
-    return enum_items_all
+        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id))
+    
+    pcoll.previews_previews_all = enum_items_all
+    pcoll.previews_previews_dir_all = directory
+    
+    return pcoll.previews_previews_all
     
 def change_image_model_all(self,context):
     pass
@@ -83,7 +90,7 @@ class BlenderPolyUIPanel(bpy.types.Panel):
         row = layout.row()
         col = row.column()
         
-        col.template_icon_view(props, "preview_icons", show_labels=False)
+        col.template_icon_view(wm, "preview_icons", show_labels=False)
     
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -139,7 +146,6 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name = 'Order by',
         default = 'BEST')
     pageToken = ''
-    preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -226,17 +232,25 @@ class BlenderPolyAssets(bpy.types.Operator):
         r = requests.get(url, params=payload)
         
         json = r.json()
+#        print (r.text)
 
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
 
-        for asset in json['assets']:
-            thumbnail_url = asset['thumbnail']['url']
+        for asset in json['assets']:            
+            suffix = Path(asset['thumbnail']['relativePath']).suffix
             
-            if not tmp_path.joinpath (asset['thumbnail']['relativePath']).exists ():
-                thumbnail = requests.get(thumbnail_url)
+            # delete unusable character for filename  
+            asset['displayName'] = re.sub (r'\\|\?|/|:|"|<|>|\|', '', asset['displayName'])
             
-                with tmp_path.joinpath (asset['thumbnail']['relativePath']).open (mode='wb') as f:
+            filepath = tmp_path.joinpath(asset['displayName']).with_suffix(suffix)
+            
+            print(filepath)
+            
+            if not filepath.exists ():
+                thumbnail = requests.get(asset['thumbnail']['url'])
+
+                with tmp_path.joinpath (filepath).open (mode='wb') as f:
                     f.write (thumbnail.content)
         
 #        print (r.text)
@@ -254,9 +268,12 @@ def register():
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
     bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
+    bpy.types.WindowManager.preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
 
     for category in blender_poly_category_items:
         pcoll = bpy.utils.previews.new ()
+        pcoll.previews_previews_all = ()
+        pcoll.previews_previews_dir_all = ""
         preview_collections [category[0]] = pcoll
 
 def unregister():
