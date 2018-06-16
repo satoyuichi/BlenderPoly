@@ -55,15 +55,14 @@ def enum_previews_from_model_previews_all(self, context):
     
 #    print(filepath_list)
     
-    for filepath in filepath_list:
+    for i, filepath in enumerate(filepath_list):
         comp_path = str(filepath.resolve())
         print (comp_path)
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
-        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id))
+        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id, i))
     
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
-    
     return pcoll.previews_previews_all
     
 def change_image_model_all(self,context):
@@ -183,7 +182,7 @@ class LayoutPolyPanel(bpy.types.Panel):
         
         row = layout.row(align = True)
         row.scale_y = 2.0
-        row.operator("render.render", text = "Load")
+        row.operator("blender_poly.load", text = "Load")
 
         row = layout.row(align=True)
         col = row.column()
@@ -200,12 +199,12 @@ class LayoutPolyPanel(bpy.types.Panel):
         col.operator("scene.next_mat_item", icon = "TRIA_RIGHT", text = "")
         
         row = layout.row(align = True)
-        row.scale_y = 2.0
-        row.operator("blender_poly.test", text = "Test")
+        row.scale_y = 1.5
+        row.operator("blender_poly.import", text = "Import")
 
-class BlenderPolyAssets(bpy.types.Operator):
-    bl_idname = "blender_poly.test"
-    bl_label = "Test Operator"
+class BlenderPolyAssetsLoad(bpy.types.Operator):
+    bl_idname = "blender_poly.load"
+    bl_label = "Load Operator"
     
     def execute(self, context):
         url = "https://poly.googleapis.com/v1/assets"
@@ -257,11 +256,19 @@ class BlenderPolyAssets(bpy.types.Operator):
 #        print (r.url)
 
         return {'FINISHED'}
+    
+class BlenderPolyAssetsImport(bpy.types.Operator):
+    bl_idname = "blender_poly.import"
+    bl_label = "Import Operator"
+
+    def execute(self, context):
+        return {'FINISHED'}
         
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(LayoutPolyPanel)
-    bpy.utils.register_class(BlenderPolyAssets)
+    bpy.utils.register_class(BlenderPolyAssetsLoad)
+    bpy.utils.register_class(BlenderPolyAssetsImport)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
     bpy.utils.register_class(BlenderPolyUIPanel)
@@ -280,7 +287,8 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyUIPanel)
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
-    bpy.utils.unregister_class(BlenderPolyAssets)
+    bpy.utils.unregister_class(BlenderPolyAssetsImport)
+    bpy.utils.unregister_class(BlenderPolyAssetsLoad)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
