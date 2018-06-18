@@ -19,6 +19,7 @@ __package__ = "blender_poly"
 BLENDER_POLY_PATH = 'BlenderPoly'
 
 preview_collections = {}
+blender_poly_json = []
 blender_poly_category_items = [
 #            ('featured', 'Featured', 'featured'),
 #            ('uploads', 'Your Uploads', 'uploads'),
@@ -53,11 +54,13 @@ def enum_previews_from_model_previews_all(self, context):
         
     filepath_list = list(Path(directory).glob('**/*'))
     
-#    print(filepath_list)
-    
     for i, filepath in enumerate(filepath_list):
+        if filepath.suffix == ".json":
+            with filepath.open ("r") as f:
+                blender_poly_json = json.loads (f.read ())
+            continue
+        
         comp_path = str(filepath.resolve())
-        print (comp_path)
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
         enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id, i))
     
@@ -236,6 +239,10 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
 
+        json_path = tmp_path.joinpath (props.category_type + ".json")
+        with json_path.open ("w") as f:
+            f.write (r.text)
+            
         for asset in json['assets']:            
             suffix = Path(asset['thumbnail']['relativePath']).suffix
             
@@ -244,16 +251,11 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
             
             filepath = tmp_path.joinpath(asset['displayName']).with_suffix(suffix)
             
-            print(filepath)
-            
             if not filepath.exists ():
                 thumbnail = requests.get(asset['thumbnail']['url'])
 
                 with tmp_path.joinpath (filepath).open (mode='wb') as f:
                     f.write (thumbnail.content)
-        
-#        print (r.text)
-#        print (r.url)
 
         return {'FINISHED'}
     
@@ -271,7 +273,6 @@ def register():
     bpy.utils.register_class(BlenderPolyAssetsImport)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
-    bpy.utils.register_class(BlenderPolyUIPanel)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
     bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
@@ -284,7 +285,6 @@ def register():
         preview_collections [category[0]] = pcoll
 
 def unregister():
-    bpy.utils.unregister_class(BlenderPolyUIPanel)
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssetsImport)
