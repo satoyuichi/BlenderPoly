@@ -20,6 +20,7 @@ BLENDER_POLY_PATH = 'BlenderPoly'
 
 preview_collections = {}
 blender_poly_json = []
+blender_poly_select_json = []
 blender_poly_category_items = [
 #            ('featured', 'Featured', 'featured'),
 #            ('uploads', 'Your Uploads', 'uploads'),
@@ -57,6 +58,7 @@ def enum_previews_from_model_previews_all(self, context):
     for i, filepath in enumerate(filepath_list):
         if filepath.suffix == ".json":
             with filepath.open ("r") as f:
+                global blender_poly_json
                 blender_poly_json = json.loads (f.read ())
             continue
         
@@ -68,9 +70,20 @@ def enum_previews_from_model_previews_all(self, context):
     pcoll.previews_previews_dir_all = directory
     return pcoll.previews_previews_all
     
-def change_image_model_all(self,context):
-    pass
+def change_image_model_all(self, context):
+    print ('change_image_model_all')
+    return None
 
+def set_model_all(self, value):
+#    global blender_poly_json
+#    global blender_poly_select_json
+#    
+#    print(value)
+#    print(len(blender_poly_json))
+#    blender_poly_select_json = blender_poly_json['assets'][value]
+#    print(blender_poly_select_json)
+    return None
+    
 class BlenderPolyUIPanel(bpy.types.Panel):
     """Creates a Panel in the material tab"""
     bl_label = "Blender Poly"
@@ -215,7 +228,7 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
 
         tmp_path = Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
 
-        print(tmp_path)
+#        print(tmp_path)
         
         if not tmp_path.exists ():
             tmp_path.mkdir (parents=True)
@@ -235,6 +248,7 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         
         json = r.json()
 #        print (r.text)
+#        print (r.url)
 
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
@@ -264,6 +278,7 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
     bl_label = "Import Operator"
 
     def execute(self, context):
+        blender_poly_json
         return {'FINISHED'}
         
 def register():
@@ -275,8 +290,9 @@ def register():
     bpy.utils.register_class(BlenderPolyInstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
-    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
-    bpy.types.WindowManager.preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
+#    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all, set=set_model_all)
+    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, set=set_model_all)
+#    bpy.types.WindowManager.preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
 
     for category in blender_poly_category_items:
         pcoll = bpy.utils.previews.new ()
