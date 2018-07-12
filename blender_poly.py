@@ -72,6 +72,11 @@ def enum_previews_from_model_previews_all(self, context):
     
 def change_image_model_all(self, context):
     print ('change_image_model_all')
+    
+    props = context.window_manager.poly
+    pcoll = preview_collections[props.category_type]
+    print(props.category_type)
+    print(self)
     return None
 
 def set_model_all(self, value):
@@ -82,6 +87,8 @@ def set_model_all(self, value):
 #    print(len(blender_poly_json))
 #    blender_poly_select_json = blender_poly_json['assets'][value]
 #    print(blender_poly_select_json)
+    print(value)
+    
     return None
     
 class BlenderPolyUIPanel(bpy.types.Panel):
@@ -291,7 +298,7 @@ def register():
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
 #    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all, set=set_model_all)
-    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, set=set_model_all)
+    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
 #    bpy.types.WindowManager.preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
 
     for category in blender_poly_category_items:
