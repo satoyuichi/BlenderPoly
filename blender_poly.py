@@ -64,7 +64,8 @@ def enum_previews_from_model_previews_all(self, context):
         
         comp_path = str(filepath.resolve())
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
-        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id, i))
+#        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id, i))
+        enum_items_all.append((filepath.stem.replace(' ', '_'), filepath.stem, comp_path, thumb.icon_id, i))
     
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
@@ -76,14 +77,16 @@ def change_image_model_all(self, context):
     props = context.window_manager.poly
     pcoll = preview_collections[props.category_type]
     print(props.category_type)
-    print(self)
+    
+    print (context.window_manager.poly_model_previews_all)
+    
     return None
 
 def set_model_all(self, value):
+    print ("set_model_all")
 #    global blender_poly_json
 #    global blender_poly_select_json
 #    
-#    print(value)
 #    print(len(blender_poly_json))
 #    blender_poly_select_json = blender_poly_json['assets'][value]
 #    print(blender_poly_select_json)
@@ -91,28 +94,28 @@ def set_model_all(self, value):
     
     return None
     
-class BlenderPolyUIPanel(bpy.types.Panel):
-    """Creates a Panel in the material tab"""
-    bl_label = "Blender Poly"
-    bl_idname = "OBJECT_PT_blender_poly_previews"
-    bl_space_type = "PROPERTIES"
-    bl_region_type = "WINDOW"
-    bl_context = "object"
-    
-    @classmethod
-    def poll(cls, context):
-        return True
+#class BlenderPolyUIPanel(bpy.types.Panel):
+#    """Creates a Panel in the material tab"""
+#    bl_label = "Blender Poly"
+#    bl_idname = "OBJECT_PT_blender_poly_previews"
+#    bl_space_type = "PROPERTIES"
+#    bl_region_type = "WINDOW"
+#    bl_context = "object"
+#    
+#    @classmethod
+#    def poll(cls, context):
+#        return True
 
-    def draw(self, context):
-        layout = self.layout
-        wm = context.window_manager
-        preferences = context.user_preferences.addons[__package__].preferences
-        props = context.window_manager.poly
-        
-        row = layout.row()
-        col = row.column()
-        
-        col.template_icon_view(wm, "preview_icons", show_labels=False)
+#    def draw(self, context):
+#        layout = self.layout
+#        wm = context.window_manager
+##        preferences = context.user_preferences.addons[__package__].preferences
+##        props = context.window_manager.poly
+#        
+#        row = layout.row()
+#        col = row.column()
+#        
+#        col.template_icon_view(wm, "preview_icons", show_labels=True)
     
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -268,10 +271,13 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
             suffix = Path(asset['thumbnail']['relativePath']).suffix
             
             # delete unusable character for filename  
-            asset['displayName'] = re.sub (r'\\|\?|/|:|"|<|>|\|', '', asset['displayName'])
+#            asset['displayName'] = re.sub (r'\\|\?|/|:|"|<|>|\|', '', asset['displayName'])
+#            
+#            filepath = tmp_path.joinpath(asset['displayName']).with_suffix(suffix)
+            asset['name'] = re.sub (r'assets/', '', asset['name'])
             
-            filepath = tmp_path.joinpath(asset['displayName']).with_suffix(suffix)
-            
+            filepath = tmp_path.joinpath(asset['name']).with_suffix(suffix)
+           
             if not filepath.exists ():
                 thumbnail = requests.get(asset['thumbnail']['url'])
 
