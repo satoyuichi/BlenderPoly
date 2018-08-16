@@ -37,6 +37,16 @@ blender_poly_category_items = [
     ('transport', 'Transport', 'transport')
 ]
 
+def get_temp_path (context):
+    props = context.window_manager.poly
+    return Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+
+def get_element_from_json (id):
+    global blender_poly_json
+    for elem in blender_poly_json['assets']:
+        if elem['name'] == id:
+            return elem
+
 def enum_previews_from_model_previews_all(self, context):
     """EnumProperty callback"""
     if context is None:
@@ -47,7 +57,7 @@ def enum_previews_from_model_previews_all(self, context):
     props = context.window_manager.poly
     
     enum_items_all = []
-    directory = Path(context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+    directory = get_temp_path (context)
     pcoll = preview_collections[props.category_type]
     
     if directory == pcoll.previews_previews_dir_all:
@@ -55,17 +65,25 @@ def enum_previews_from_model_previews_all(self, context):
         
     filepath_list = list(Path(directory).glob('**/*'))
     
-    for i, filepath in enumerate(filepath_list):
-        if filepath.suffix == ".json":
-            with filepath.open ("r") as f:
-                global blender_poly_json
-                blender_poly_json = json.loads (f.read ())
-            continue
+    # Load JSON file.
+    json_path = directory.joinpath (props.category_type + ".json")
+    with json_path.open ("r") as f:
+        global blender_poly_json
+        blender_poly_json = json.loads (f.read ())
         
+    for i, filepath in enumerate(filepath_list):
+        if filepath.suffix != ".png":
+            continue
+
+        # Load image.        
         comp_path = str(filepath.resolve())
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
-#        enum_items_all.append((comp_path, filepath.stem, comp_path, thumb.icon_id, i))
-        enum_items_all.append((filepath.stem.replace(' ', '_'), filepath.stem, comp_path, thumb.icon_id, i))
+
+        # Get asset name from JSON.
+        id_name = 'assets/' + filepath.stem
+        elem = get_element_from_json (id_name)
+
+        enum_items_all.append((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
     
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
@@ -76,7 +94,6 @@ def change_image_model_all(self, context):
     
     props = context.window_manager.poly
     pcoll = preview_collections[props.category_type]
-    print(props.category_type)
     
     print (context.window_manager.poly_model_previews_all)
     
@@ -291,7 +308,25 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
     bl_label = "Import Operator"
 
     def execute(self, context):
-        blender_poly_json
+        print ("Import")
+        global blender_poly_json
+
+        elem = get_element_from_json (context.window_manager.poly_model_previews_all)
+#        url = elem['formats']['root']['url']
+        
+        obj_elem = ''
+        for el in elem['formats']:
+            if el['formatType'] == 'OBJ':
+                obj_elem = el
+
+        url = obj_elem['root']['url']
+        r = requests.get(url)
+
+        file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
+        with file_path.open ("w") as f:
+            f.write (r.text)
+            bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+        
         return {'FINISHED'}
         
 def register():
