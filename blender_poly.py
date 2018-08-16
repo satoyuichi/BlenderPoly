@@ -14,7 +14,6 @@ import json
 import re
 from pathlib import Path
 
-#breakpoint = bpy.types.bp.bp
 __package__ = "blender_poly"
 BLENDER_POLY_PATH = 'BlenderPoly'
 
@@ -22,9 +21,6 @@ preview_collections = {}
 blender_poly_json = []
 blender_poly_select_json = []
 blender_poly_category_items = [
-#            ('featured', 'Featured', 'featured'),
-#            ('uploads', 'Your Uploads', 'uploads'),
-#            ('likes', 'Your Likes', 'likes'),
     ('animal', 'Animals and Creatures', 'animal'),
     ('architecture', 'Architecture', 'architecture'),
     ('art', 'Art', 'art'),
@@ -88,51 +84,6 @@ def enum_previews_from_model_previews_all(self, context):
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
     return pcoll.previews_previews_all
-    
-def change_image_model_all(self, context):
-    print ('change_image_model_all')
-    
-    props = context.window_manager.poly
-    pcoll = preview_collections[props.category_type]
-    
-    print (context.window_manager.poly_model_previews_all)
-    
-    return None
-
-def set_model_all(self, value):
-    print ("set_model_all")
-#    global blender_poly_json
-#    global blender_poly_select_json
-#    
-#    print(len(blender_poly_json))
-#    blender_poly_select_json = blender_poly_json['assets'][value]
-#    print(blender_poly_select_json)
-    print(value)
-    
-    return None
-    
-#class BlenderPolyUIPanel(bpy.types.Panel):
-#    """Creates a Panel in the material tab"""
-#    bl_label = "Blender Poly"
-#    bl_idname = "OBJECT_PT_blender_poly_previews"
-#    bl_space_type = "PROPERTIES"
-#    bl_region_type = "WINDOW"
-#    bl_context = "object"
-#    
-#    @classmethod
-#    def poll(cls, context):
-#        return True
-
-#    def draw(self, context):
-#        layout = self.layout
-#        wm = context.window_manager
-##        preferences = context.user_preferences.addons[__package__].preferences
-##        props = context.window_manager.poly
-#        
-#        row = layout.row()
-#        col = row.column()
-#        
-#        col.template_icon_view(wm, "preview_icons", show_labels=True)
     
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -285,14 +236,8 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
             f.write (r.text)
             
         for asset in json['assets']:            
-            suffix = Path(asset['thumbnail']['relativePath']).suffix
-            
-            # delete unusable character for filename  
-#            asset['displayName'] = re.sub (r'\\|\?|/|:|"|<|>|\|', '', asset['displayName'])
-#            
-#            filepath = tmp_path.joinpath(asset['displayName']).with_suffix(suffix)
+            suffix = Path(asset['thumbnail']['relativePath']).suffix            
             asset['name'] = re.sub (r'assets/', '', asset['name'])
-            
             filepath = tmp_path.joinpath(asset['name']).with_suffix(suffix)
            
             if not filepath.exists ():
@@ -312,7 +257,6 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
         global blender_poly_json
 
         elem = get_element_from_json (context.window_manager.poly_model_previews_all)
-#        url = elem['formats']['root']['url']
         
         obj_elem = ''
         for el in elem['formats']:
@@ -338,9 +282,7 @@ def register():
     bpy.utils.register_class(BlenderPolyInstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
-#    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all, set=set_model_all)
-    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all, update=change_image_model_all)
-#    bpy.types.WindowManager.preview_icons = bpy.props.EnumProperty(items = enum_previews_from_model_previews_all, update = change_image_model_all)
+    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all)
 
     for category in blender_poly_category_items:
         pcoll = bpy.utils.previews.new ()
