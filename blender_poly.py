@@ -24,13 +24,17 @@ blender_poly_category_items = [
     ('animals', 'Animals and Creatures', 'animals'),
     ('architecture', 'Architecture', 'architecture'),
     ('art', 'Art', 'art'),
+    ('current_events', 'Current events', 'current_events'),
     ('food', 'Food and Drink', 'food'),
+    ('furniture_home', 'Furniture and Home', 'furniture_home'),
     ('nature', 'Nature', 'nature'),
     ('objects', 'Objects', 'objects'),
     ('people', 'People and Characters', 'people'),
     ('scenes', 'Places and Scenes', 'scenes'),
+    ('sports_fitness', 'Sports and Fitness', 'sports_fitness'),
     ('tech', 'Technology', 'tech'),
-    ('transport', 'Transport', 'transport')
+    ('transport', 'Transport', 'transport'),
+    ('travel', 'Travel', 'travel')
 ]
 
 def get_temp_path (context):
