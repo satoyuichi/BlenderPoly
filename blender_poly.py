@@ -21,7 +21,7 @@ preview_collections = {}
 blender_poly_json = []
 blender_poly_select_json = []
 blender_poly_category_items = [
-    ('animal', 'Animals and Creatures', 'animal'),
+    ('animals', 'Animals and Creatures', 'animals'),
     ('architecture', 'Architecture', 'architecture'),
     ('art', 'Art', 'art'),
     ('food', 'Food and Drink', 'food'),
@@ -29,7 +29,7 @@ blender_poly_category_items = [
     ('objects', 'Objects', 'objects'),
     ('people', 'People and Characters', 'people'),
     ('scenes', 'Places and Scenes', 'scenes'),
-    ('technology', 'Technology', 'technology'),
+    ('tech', 'Technology', 'tech'),
     ('transport', 'Transport', 'transport')
 ]
 
@@ -63,7 +63,10 @@ def enum_previews_from_model_previews_all(self, context):
     
     # Load JSON file.
     json_path = directory.joinpath (props.category_type + ".json")
-    with json_path.open ("r") as f:
+    if not json_path.exists ():
+        return enum_items_all
+    
+    with json_path.open ("r", encoding='utf-8') as f:
         global blender_poly_json
         blender_poly_json = json.loads (f.read ())
         
@@ -122,7 +125,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
     category_type = bpy.props.EnumProperty(
         items = blender_poly_category_items,
         name = "Category Type",
-        default = "animal")
+        default = "animals")
     maxComplexity = bpy.props.EnumProperty(
         items = [
             ('COMPLEX', 'COMPLEX', 'COMPLEX'),
@@ -226,13 +229,13 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         
         json = r.json()
 #        print (r.text)
-#        print (r.url)
+        print (r.url)
 
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
 
         json_path = tmp_path.joinpath (props.category_type + ".json")
-        with json_path.open ("w") as f:
+        with json_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
             
         for asset in json['assets']:            
@@ -267,7 +270,7 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
         r = requests.get(url)
 
         file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
-        with file_path.open ("w") as f:
+        with file_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
             bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
         
