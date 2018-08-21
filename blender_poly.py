@@ -193,7 +193,8 @@ class LayoutPolyPanel(bpy.types.Panel):
         col = row.column()
         col.scale_y = 1
         col.template_icon_view(wm, "poly_model_previews_all", show_labels = True)
-#        col.label(matNameNew.title().replace("_", " "))
+        elem = get_element_from_json (context.window_manager.poly_model_previews_all)
+        col.label(elem['displayName'])
         
         col = row.column()
         col.scale_y = 7
