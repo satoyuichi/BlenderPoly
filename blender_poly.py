@@ -188,7 +188,7 @@ class LayoutPolyPanel(bpy.types.Panel):
         row = layout.row(align=True)
         col = row.column()
         col.scale_y = 7
-        col.operator("scene.previous_mat_item", icon = "TRIA_LEFT", text = "")
+        col.operator("blender_poly.previous_item", icon = "TRIA_LEFT", text = "")
 
         col = row.column()
         col.scale_y = 1
@@ -197,12 +197,19 @@ class LayoutPolyPanel(bpy.types.Panel):
         
         col = row.column()
         col.scale_y = 7
-        col.operator("scene.next_mat_item", icon = "TRIA_RIGHT", text = "")
+        col.operator("blender_poly.next_item", icon = "TRIA_RIGHT", text = "")
         
         row = layout.row(align = True)
         row.scale_y = 1.5
         row.operator("blender_poly.import", text = "Import")
 
+class BlenderPolyPreviousAssets(bpy.types.Operator):
+    bl_idname = "blender_poly.previous_item"
+    bl_label = "Select Next Object"
+
+    def execute(self, context):
+        wm = context.window_manager        
+            
 class BlenderPolyAssetsLoad(bpy.types.Operator):
     bl_idname = "blender_poly.load"
     bl_label = "Load Operator"
