@@ -146,6 +146,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name = 'Order by',
         default = 'BEST')
     pageToken = ''
+    nextPageToken = ''
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -182,8 +183,13 @@ class LayoutPolyPanel(bpy.types.Panel):
         row.prop(props, "keywords")
         
         row = layout.row(align = True)
-        row.scale_y = 2.0
-        row.operator("blender_poly.load", text = "Load")
+        col = row.column()
+        col.scale_y = 2.0
+        col.operator("blender_poly.load", text = "Load")
+        col = row.column()
+        col.scale_y = 2.0
+        col.operator("blender_poly.load", text = "Next Page")
+        col.enabled = True
 
         row = layout.row(align=True)
         col = row.column()
@@ -260,6 +266,9 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
 
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
+
+        props.nextPageToken = json['nextPageToken']
+        print (props.nextPageToken)
 
         json_path = tmp_path.joinpath (props.category_type + ".json")
         with json_path.open ("w", encoding='utf-8') as f:
