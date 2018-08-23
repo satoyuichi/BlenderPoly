@@ -49,6 +49,8 @@ def get_element_from_json (id):
 
 def enum_previews_from_model_previews_all(self, context):
     """EnumProperty callback"""
+    print ("enum_previews_from_model_previews_all")
+    
     if context is None:
         return []
 
@@ -63,7 +65,7 @@ def enum_previews_from_model_previews_all(self, context):
     if directory == pcoll.previews_previews_dir_all:
         return pcoll.previews_previews_all
         
-    filepath_list = list(Path(directory).glob('**/*'))
+    filepath_list = list (Path (directory).glob ('**/*'))
     
     # Load JSON file.
     json_path = directory.joinpath (props.category_type + ".json")
@@ -73,20 +75,20 @@ def enum_previews_from_model_previews_all(self, context):
     with json_path.open ("r", encoding='utf-8') as f:
         global blender_poly_json
         blender_poly_json = json.loads (f.read ())
-        
-    for i, filepath in enumerate(filepath_list):
+    
+    for i, filepath in enumerate (filepath_list):
         if filepath.suffix != ".png":
             continue
 
-        # Load image.        
-        comp_path = str(filepath.resolve())
+        # Load image.
+        comp_path = str (filepath.resolve ())
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
 
         # Get asset name from JSON.
         id_name = 'assets/' + filepath.stem
         elem = get_element_from_json (id_name)
 
-        enum_items_all.append((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
+        enum_items_all.append ((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
     
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
@@ -145,8 +147,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         items = [('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
         name = 'Order by',
         default = 'BEST')
-    pageToken = ''
-    nextPageToken = ''
+    nextPageToken = bpy.props.StringProperty(name = 'nextPageToken', default = '', description = 'Token')
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -188,8 +189,6 @@ class LayoutPolyPanel(bpy.types.Panel):
         col.operator("blender_poly.load", text = "Load")
         col = row.column()
         col.scale_y = 2.0
-        col.operator("blender_poly.load", text = "Next Page")
-        col.enabled = True
 
         row = layout.row(align=True)
         col = row.column()
@@ -213,29 +212,39 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
     bl_idname = "blender_poly.load"
     bl_label = "Load Operator"
     
-    def execute(self, context):
-        url = "https://poly.googleapis.com/v1/assets"
-        props = context.window_manager.poly
-
-        tmp_path = Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
-
-#        print(tmp_path)
-        
-        if not tmp_path.exists ():
-            tmp_path.mkdir (parents=True)
-        
-        preferences = context.user_preferences.addons[__package__].preferences
-        payload = {'key': preferences.polyApiKey, 'format': 'OBJ',
+    def getPayload (self, preferences, props):
+        return {'key': preferences.polyApiKey, 'format': 'OBJ',
             'category': props.category_type,
             'maxComplexity': props.maxComplexity,
             'curated': props.curated,
             'keywords': props.keywords,
             'pageSize': props.pageSize,
             'orderBy': props.orderBy,
-#            'pageToken': props.pageToken
+            'pageToken': props.nextPageToken
         }
         
-        r = requests.get(url, params=payload)
+    def writeThumbnails (self, json, thumbnail_path):
+        for asset in json['assets']:
+            suffix = Path (asset['thumbnail']['relativePath']).suffix
+            asset['name'] = re.sub (r'assets/', '', asset['name'])
+            filepath = thumbnail_path.joinpath (asset['name']).with_suffix(suffix)
+
+            if not filepath.exists ():
+                thumbnail = requests.get (asset['thumbnail']['url'])
+                with thumbnail_path.joinpath (filepath).open (mode='wb') as f:
+                    f.write (thumbnail.content)
+
+    def execute(self, context):
+        tmp_path = get_temp_path (context)
+#        print(tmp_path)
+        if not tmp_path.exists ():
+            tmp_path.mkdir (parents=True)
+
+        props = context.window_manager.poly
+        preferences = context.user_preferences.addons[__package__].preferences
+        payload = self.getPayload(preferences, props)
+
+        r = requests.get ("https://poly.googleapis.com/v1/assets", params = payload)
         
         json = r.json()
 #        print (r.text)
@@ -245,25 +254,16 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
             return {'INTERFACE'}
 
         props.nextPageToken = json['nextPageToken']
-        print (props.nextPageToken)
 
+        # Save JSON
         json_path = tmp_path.joinpath (props.category_type + ".json")
         with json_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
-            
-        for asset in json['assets']:            
-            suffix = Path(asset['thumbnail']['relativePath']).suffix            
-            asset['name'] = re.sub (r'assets/', '', asset['name'])
-            filepath = tmp_path.joinpath(asset['name']).with_suffix(suffix)
-           
-            if not filepath.exists ():
-                thumbnail = requests.get(asset['thumbnail']['url'])
 
-                with tmp_path.joinpath (filepath).open (mode='wb') as f:
-                    f.write (thumbnail.content)
+        self.writeThumbnails (json, tmp_path)
 
         return {'FINISHED'}
-    
+
 class BlenderPolyAssetsImport(bpy.types.Operator):
     bl_idname = "blender_poly.import"
     bl_label = "Import Operator"
