@@ -12,6 +12,7 @@ import bpy
 import requests
 import json
 import re
+import os
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -58,12 +59,13 @@ def enum_previews_from_model_previews_all(self, context):
     
     enum_items_all = []
     directory = get_temp_path (context)
+
     pcoll = preview_collections[props.category_type]
     
     if directory == pcoll.previews_previews_dir_all:
         return pcoll.previews_previews_all
         
-    filepath_list = list(Path(directory).glob('**/*'))
+    filepath_list = list (Path (directory).glob ('**/*'))
     
     # Load JSON file.
     json_path = directory.joinpath (props.category_type + ".json")
@@ -73,20 +75,20 @@ def enum_previews_from_model_previews_all(self, context):
     with json_path.open ("r", encoding='utf-8') as f:
         global blender_poly_json
         blender_poly_json = json.loads (f.read ())
-        
-    for i, filepath in enumerate(filepath_list):
+    
+    for i, filepath in enumerate (filepath_list):
         if filepath.suffix != ".png":
             continue
 
-        # Load image.        
-        comp_path = str(filepath.resolve())
+        # Load image.
+        comp_path = str (filepath)
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
 
         # Get asset name from JSON.
         id_name = 'assets/' + filepath.stem
         elem = get_element_from_json (id_name)
 
-        enum_items_all.append((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
+        enum_items_all.append ((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
     
     pcoll.previews_previews_all = enum_items_all
     pcoll.previews_previews_dir_all = directory
@@ -145,7 +147,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         items = [('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
         name = 'Order by',
         default = 'BEST')
-    pageToken = ''
+    nextPageToken = bpy.props.StringProperty(name = 'nextPageToken', default = '', description = 'Token')
         
 class LayoutPolyPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -182,13 +184,16 @@ class LayoutPolyPanel(bpy.types.Panel):
         row.prop(props, "keywords")
         
         row = layout.row(align = True)
-        row.scale_y = 2.0
-        row.operator("blender_poly.load", text = "Load")
+        col = row.column()
+        col.scale_y = 2.0
+        col.operator("blender_poly.load", text = "Load")
+        col = row.column()
+        col.scale_y = 2.0
 
         row = layout.row(align=True)
         col = row.column()
         col.scale_y = 7
-        col.operator("scene.previous_mat_item", icon = "TRIA_LEFT", text = "")
+        col.operator("blender_poly.previous_item", icon = "TRIA_LEFT", text = "")
 
         col = row.column()
         col.scale_y = 1
@@ -198,39 +203,85 @@ class LayoutPolyPanel(bpy.types.Panel):
         
         col = row.column()
         col.scale_y = 7
-        col.operator("scene.next_mat_item", icon = "TRIA_RIGHT", text = "")
+        col.operator("blender_poly.next_item", icon = "TRIA_RIGHT", text = "")
         
         row = layout.row(align = True)
         row.scale_y = 1.5
         row.operator("blender_poly.import", text = "Import")
 
+class BlenderPolyPreviousAssets(bpy.types.Operator):
+    bl_idname = "blender_poly.previous_item"
+    bl_label = "Select Previous Object"
+
+    def execute(self, context):
+        wm = context.window_manager
+        props = context.window_manager.poly
+        print(props.category_type)
+
+        return {'FINISHED'}
+    
+class BlenderPolyNextAssets(bpy.types.Operator):
+    bl_idname = "blender_poly.next_item"
+    bl_label = "Select Next Object"
+
+    def execute(self, context):
+        wm = context.window_manager
+        props = context.window_manager.poly
+        print(props.category_type)
+
+        return {'FINISHED'}
+            
 class BlenderPolyAssetsLoad(bpy.types.Operator):
     bl_idname = "blender_poly.load"
     bl_label = "Load Operator"
     
-    def execute(self, context):
-        url = "https://poly.googleapis.com/v1/assets"
-        props = context.window_manager.poly
-
-        tmp_path = Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
-
-#        print(tmp_path)
-        
-        if not tmp_path.exists ():
-            tmp_path.mkdir (parents=True)
-        
-        preferences = context.user_preferences.addons[__package__].preferences
-        payload = {'key': preferences.polyApiKey, 'format': 'OBJ',
+    def getPayload (self, preferences, props):
+        return {'key': preferences.polyApiKey, 'format': 'OBJ',
             'category': props.category_type,
             'maxComplexity': props.maxComplexity,
             'curated': props.curated,
             'keywords': props.keywords,
             'pageSize': props.pageSize,
             'orderBy': props.orderBy,
-#            'pageToken': props.pageToken
+            'pageToken': props.nextPageToken
         }
         
-        r = requests.get(url, params=payload)
+    def writeThumbnails (self, json, thumbnail_path):
+        for asset in json['assets']:
+            suffix = Path (asset['thumbnail']['relativePath']).suffix
+            asset['name'] = re.sub (r'assets/', '', asset['name'])
+            filepath = thumbnail_path.joinpath (asset['name']).with_suffix(suffix)
+
+            if not filepath.exists ():
+                thumbnail = requests.get (asset['thumbnail']['url'])
+                with thumbnail_path.joinpath (filepath).open (mode='wb') as f:
+                    f.write (thumbnail.content)
+
+    def recreatePreviews (self, props):
+        pcoll = preview_collections[props.category_type]
+        bpy.utils.previews.remove(pcoll)
+        pcoll = bpy.utils.previews.new ()
+        preview_collections[props.category_type] = pcoll
+        pcoll.previews_previews_all = ()
+        pcoll.previews_previews_dir_all = ""
+
+    def execute(self, context):
+        tmp_path = get_temp_path (context)
+#        print(tmp_path)
+        if tmp_path.exists ():
+            filepath_list = list (tmp_path.glob ('**/*'))
+            for path in filepath_list:
+                os.remove (str(path))
+        else:
+            tmp_path.mkdir (parents=True)
+
+        props = context.window_manager.poly
+        preferences = context.user_preferences.addons[__package__].preferences
+        payload = self.getPayload(preferences, props)
+
+        self.recreatePreviews (props)
+
+        r = requests.get ("https://poly.googleapis.com/v1/assets", params = payload)
         
         json = r.json()
 #        print (r.text)
@@ -239,23 +290,17 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
 
+        props.nextPageToken = json['nextPageToken']
+
+        # Save JSON
         json_path = tmp_path.joinpath (props.category_type + ".json")
         with json_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
-            
-        for asset in json['assets']:            
-            suffix = Path(asset['thumbnail']['relativePath']).suffix            
-            asset['name'] = re.sub (r'assets/', '', asset['name'])
-            filepath = tmp_path.joinpath(asset['name']).with_suffix(suffix)
-           
-            if not filepath.exists ():
-                thumbnail = requests.get(asset['thumbnail']['url'])
 
-                with tmp_path.joinpath (filepath).open (mode='wb') as f:
-                    f.write (thumbnail.content)
+        self.writeThumbnails (json, tmp_path)
 
         return {'FINISHED'}
-    
+
 class BlenderPolyAssetsImport(bpy.types.Operator):
     bl_idname = "blender_poly.import"
     bl_label = "Import Operator"
@@ -277,7 +322,8 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
         file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
         with file_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
-            bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+
+        bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
         
         return {'FINISHED'}
         
@@ -285,6 +331,8 @@ def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(LayoutPolyPanel)
     bpy.utils.register_class(BlenderPolyAssetsLoad)
+    bpy.utils.register_class(BlenderPolyPreviousAssets)
+    bpy.utils.register_class(BlenderPolyNextAssets)
     bpy.utils.register_class(BlenderPolyAssetsImport)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
@@ -302,6 +350,8 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssetsImport)
+    bpy.utils.unregister_class(BlenderPolyNextAssets)
+    bpy.utils.unregister_class(BlenderPolyPreviousAssets)
     bpy.utils.unregister_class(BlenderPolyAssetsLoad)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
@@ -315,6 +365,6 @@ def unregister():
         del bpy.types.WindowManager.poly
     except:
         pass
-    
+
 if __name__ == "__main__":
     register()
