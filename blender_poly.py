@@ -12,6 +12,7 @@ import bpy
 import requests
 import json
 import re
+import os
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -49,8 +50,6 @@ def get_element_from_json (id):
 
 def enum_previews_from_model_previews_all(self, context):
     """EnumProperty callback"""
-    print ("enum_previews_from_model_previews_all")
-    
     if context is None:
         return []
 
@@ -60,6 +59,7 @@ def enum_previews_from_model_previews_all(self, context):
     
     enum_items_all = []
     directory = get_temp_path (context)
+
     pcoll = preview_collections[props.category_type]
     
     if directory == pcoll.previews_previews_dir_all:
@@ -81,7 +81,7 @@ def enum_previews_from_model_previews_all(self, context):
             continue
 
         # Load image.
-        comp_path = str (filepath.resolve ())
+        comp_path = str (filepath)
         thumb = pcoll.load (comp_path, comp_path, 'IMAGE')
 
         # Get asset name from JSON.
@@ -257,15 +257,29 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
                 with thumbnail_path.joinpath (filepath).open (mode='wb') as f:
                     f.write (thumbnail.content)
 
+    def recreatePreviews (self, props):
+        pcoll = preview_collections[props.category_type]
+        bpy.utils.previews.remove(pcoll)
+        pcoll = bpy.utils.previews.new ()
+        preview_collections[props.category_type] = pcoll
+        pcoll.previews_previews_all = ()
+        pcoll.previews_previews_dir_all = ""
+
     def execute(self, context):
         tmp_path = get_temp_path (context)
 #        print(tmp_path)
-        if not tmp_path.exists ():
+        if tmp_path.exists ():
+            filepath_list = list (tmp_path.glob ('**/*'))
+            for path in filepath_list:
+                os.remove (str(path))
+        else:
             tmp_path.mkdir (parents=True)
 
         props = context.window_manager.poly
         preferences = context.user_preferences.addons[__package__].preferences
         payload = self.getPayload(preferences, props)
+
+        self.recreatePreviews (props)
 
         r = requests.get ("https://poly.googleapis.com/v1/assets", params = payload)
         
@@ -308,7 +322,8 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
         file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
         with file_path.open ("w", encoding='utf-8') as f:
             f.write (r.text)
-            bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+
+        bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
         
         return {'FINISHED'}
         
@@ -350,6 +365,6 @@ def unregister():
         del bpy.types.WindowManager.poly
     except:
         pass
-    
+
 if __name__ == "__main__":
     register()
