@@ -19,7 +19,7 @@ __package__ = "blender_poly"
 BLENDER_POLY_PATH = 'BlenderPoly'
 
 preview_collections = {}
-blender_poly_json = []
+blender_poly_json = {}
 blender_poly_select_json = []
 blender_poly_category_items = [
     ('animals', 'Animals and Creatures', 'animals'),
@@ -44,6 +44,10 @@ def get_temp_path (context):
 
 def get_element_from_json (id):
     global blender_poly_json
+
+    if not 'assets' in blender_poly_json.keys ():
+        return None
+
     for elem in blender_poly_json['assets']:
         if elem['name'] == id:
             return elem
@@ -199,7 +203,10 @@ class LayoutPolyPanel(bpy.types.Panel):
         col.scale_y = 1
         col.template_icon_view(wm, "poly_model_previews_all", show_labels = True)
         elem = get_element_from_json (context.window_manager.poly_model_previews_all)
-        col.label(elem['displayName'])
+        if elem == None:
+            col.label('')
+        else:
+            col.label(elem['displayName'])
         
         col = row.column()
         col.scale_y = 7
