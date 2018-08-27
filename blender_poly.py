@@ -20,7 +20,6 @@ BLENDER_POLY_PATH = 'BlenderPoly'
 
 preview_collections = {}
 blender_poly_json = {}
-blender_poly_select_json = []
 blender_poly_category_items = [
     ('animals', 'Animals and Creatures', 'animals'),
     ('architecture', 'Architecture', 'architecture'),
@@ -195,9 +194,6 @@ class LayoutPolyPanel(bpy.types.Panel):
         col.scale_y = 2.0
 
         row = layout.row(align=True)
-        col = row.column()
-        col.scale_y = 7
-        col.operator("blender_poly.previous_item", icon = "TRIA_LEFT", text = "")
 
         col = row.column()
         col.scale_y = 1
@@ -208,35 +204,9 @@ class LayoutPolyPanel(bpy.types.Panel):
         else:
             col.label(elem['displayName'])
         
-        col = row.column()
-        col.scale_y = 7
-        col.operator("blender_poly.next_item", icon = "TRIA_RIGHT", text = "")
-        
         row = layout.row(align = True)
         row.scale_y = 1.5
         row.operator("blender_poly.import", text = "Import")
-
-class BlenderPolyPreviousAssets(bpy.types.Operator):
-    bl_idname = "blender_poly.previous_item"
-    bl_label = "Select Previous Object"
-
-    def execute(self, context):
-        wm = context.window_manager
-        props = context.window_manager.poly
-        print(props.category_type)
-
-        return {'FINISHED'}
-    
-class BlenderPolyNextAssets(bpy.types.Operator):
-    bl_idname = "blender_poly.next_item"
-    bl_label = "Select Next Object"
-
-    def execute(self, context):
-        wm = context.window_manager
-        props = context.window_manager.poly
-        print(props.category_type)
-
-        return {'FINISHED'}
             
 class BlenderPolyAssetsLoad(bpy.types.Operator):
     bl_idname = "blender_poly.load"
@@ -338,8 +308,6 @@ def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(LayoutPolyPanel)
     bpy.utils.register_class(BlenderPolyAssetsLoad)
-    bpy.utils.register_class(BlenderPolyPreviousAssets)
-    bpy.utils.register_class(BlenderPolyNextAssets)
     bpy.utils.register_class(BlenderPolyAssetsImport)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
@@ -357,8 +325,6 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssetsImport)
-    bpy.utils.unregister_class(BlenderPolyNextAssets)
-    bpy.utils.unregister_class(BlenderPolyPreviousAssets)
     bpy.utils.unregister_class(BlenderPolyAssetsLoad)
     bpy.utils.unregister_class(LayoutPolyPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
