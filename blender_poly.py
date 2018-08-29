@@ -274,6 +274,9 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         pcoll.previews_previews_dir_all = ""
 
     def execute(self, context):
+        if not __package__ in context.user_preferences.addons.keys ():
+            return {'FINISHED'}       
+
         tmp_path = get_temp_path (context)
 #        print(tmp_path)
         if tmp_path.exists ():
