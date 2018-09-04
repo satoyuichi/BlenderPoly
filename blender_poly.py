@@ -152,13 +152,14 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         default = 'BEST')
     nextPageToken = bpy.props.StringProperty(name = 'nextPageToken', default = '', description = 'Token')
         
-class LayoutPolyPanel(bpy.types.Panel):
+class BlenderLayoutPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
-    bl_label = "Poly"
-    bl_idname = "OBJECT_PT_layout"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "object"
+    bl_label = "Blender Poly"
+    bl_idname = "blender_poly_layout"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_category = "Create"
+    bl_context = "objectmode"
 
     def draw(self, context):
         props = context.window_manager.poly
@@ -243,6 +244,9 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         pcoll.previews_previews_dir_all = ""
 
     def execute(self, context):
+        if not __package__ in context.user_preferences.addons.keys ():
+            return {'FINISHED'}       
+
         tmp_path = get_temp_path (context)
 #        print(tmp_path)
         if tmp_path.exists ():
@@ -306,7 +310,7 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
         
 def register():
     bpy.utils.register_class(BlenderPolyProps)
-    bpy.utils.register_class(LayoutPolyPanel)
+    bpy.utils.register_class(BlenderLayoutPanel)
     bpy.utils.register_class(BlenderPolyAssetsLoad)
     bpy.utils.register_class(BlenderPolyAssetsImport)
     bpy.utils.register_class(BlenderPolyPreferences)
@@ -326,7 +330,7 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssetsImport)
     bpy.utils.unregister_class(BlenderPolyAssetsLoad)
-    bpy.utils.unregister_class(LayoutPolyPanel)
+    bpy.utils.unregister_class(BlenderLayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
     for pcoll in preview_collections.values():
