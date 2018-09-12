@@ -2,7 +2,7 @@ bl_info = {
     "name": "Blender Poly",
     "category": "Object",
     "author": "Yuichi Sato",
-    "version": (0, 1),
+    "version": (1, 0),
     "blender": (2, 79, 0),
     "location": "Object Panel > Poly",
     "wiki_url": "https://github.com/satoyuichi/BlenderPoly",
@@ -51,7 +51,7 @@ def get_element_from_json (id):
         if elem['name'] == id:
             return elem
 
-def enum_previews_from_model_previews_all(self, context):
+def enum_previews_from_model_previews(self, context):
     """EnumProperty callback"""
     if context is None:
         return []
@@ -60,20 +60,20 @@ def enum_previews_from_model_previews_all(self, context):
     preferences = context.user_preferences.addons[__package__].preferences
     props = context.window_manager.poly
     
-    enum_items_all = []
+    enum_items = []
     directory = get_temp_path (context)
 
     pcoll = preview_collections[props.category_type]
     
-    if directory == pcoll.previews_previews_dir_all:
-        return pcoll.previews_previews_all
+    if directory == pcoll.previews_previews_dir:
+        return pcoll.previews_previews
         
     filepath_list = list (Path (directory).glob ('**/*'))
     
     # Load JSON file.
     json_path = directory.joinpath (props.category_type + ".json")
     if not json_path.exists ():
-        return enum_items_all
+        return enum_items
     
     with json_path.open ("r", encoding='utf-8') as f:
         global blender_poly_json
@@ -91,11 +91,11 @@ def enum_previews_from_model_previews_all(self, context):
         id_name = 'assets/' + filepath.stem
         elem = get_element_from_json (id_name)
 
-        enum_items_all.append ((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
+        enum_items.append ((id_name, elem['displayName'], comp_path, thumb.icon_id, i))
     
-    pcoll.previews_previews_all = enum_items_all
-    pcoll.previews_previews_dir_all = directory
-    return pcoll.previews_previews_all
+    pcoll.previews_previews = enum_items
+    pcoll.previews_previews_dir = directory
+    return pcoll.previews_previews
     
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
@@ -132,25 +132,25 @@ class BlenderPolyInstallAssets(bpy.types.Operator):
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
     category_type = bpy.props.EnumProperty(
-        items = blender_poly_category_items,
-        name = "Category Type",
-        default = "animals")
+        items=blender_poly_category_items,
+        name="Category Type",
+        default="animals")
     maxComplexity = bpy.props.EnumProperty(
-        items = [
+        items=[
             ('COMPLEX', 'COMPLEX', 'COMPLEX'),
             ('MEDIUM', 'MEDIUM', 'MEDIUM'),
             ('SIMPLE', 'SIMPLE', 'SIMPLE')
         ],
-        name = "Max Complexity",
-        default = "COMPLEX")
-    keywords = bpy.props.StringProperty(name = 'Keywords', description = 'Keywords')
-    curated = bpy.props.BoolProperty(name = 'Curated', description = 'Curated')
-    pageSize = bpy.props.IntProperty(name = 'Page size', description = 'Page size', default = 20, min = 1, max = 100)
+        name="Max Complexity",
+        default="COMPLEX")
+    keywords = bpy.props.StringProperty(name='Keywords', description='Keywords')
+    curated = bpy.props.BoolProperty(name='Curated', description='Curated')
+    pageSize = bpy.props.IntProperty(name='Page size', description='Page size', default=20, min=1, max=100)
     orderBy = bpy.props.EnumProperty(
-        items = [('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
-        name = 'Order by',
-        default = 'BEST')
-    nextPageToken = bpy.props.StringProperty(name = 'nextPageToken', default = '', description = 'Token')
+        items=[('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
+        name='Order by',
+        default='BEST')
+    nextPageToken = bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
         
 class BlenderLayoutPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -187,29 +187,26 @@ class BlenderLayoutPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.prop(props, "keywords")
         
-        row = layout.row(align = True)
+        row = layout.row(align=True)
         col = row.column()
         col.scale_y = 2.0
-        col.operator("blender_poly.load", text = "Load")
-        col = row.column()
-        col.scale_y = 2.0
+        col.operator("blender_poly.load", text="Load")
 
         row = layout.row(align=True)
-
         col = row.column()
         col.scale_y = 1
-        col.template_icon_view(wm, "poly_model_previews_all", show_labels = True)
-        elem = get_element_from_json (context.window_manager.poly_model_previews_all)
+        col.template_icon_view(wm, "poly_model_previews", show_labels=True)
+        elem = get_element_from_json (context.window_manager.poly_model_previews)
         if elem == None:
             col.label('')
         else:
             col.label(elem['displayName'])
         
-        row = layout.row(align = True)
+        row = layout.row(align=True)
         row.scale_y = 1.5
-        row.operator("blender_poly.import", text = "Import")
+        row.operator("blender_poly.import", text="Import")
             
-class BlenderPolyAssetsLoad(bpy.types.Operator):
+class BlenderPolyAssetsLoader(bpy.types.Operator):
     bl_idname = "blender_poly.load"
     bl_label = "Load Operator"
     
@@ -240,15 +237,14 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
         bpy.utils.previews.remove(pcoll)
         pcoll = bpy.utils.previews.new ()
         preview_collections[props.category_type] = pcoll
-        pcoll.previews_previews_all = ()
-        pcoll.previews_previews_dir_all = ""
+        pcoll.previews_previews = ()
+        pcoll.previews_previews_dir = ""
 
     def execute(self, context):
         if not __package__ in context.user_preferences.addons.keys ():
             return {'FINISHED'}       
 
         tmp_path = get_temp_path (context)
-#        print(tmp_path)
         if tmp_path.exists ():
             filepath_list = list (tmp_path.glob ('**/*'))
             for path in filepath_list:
@@ -262,11 +258,8 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
 
         self.recreatePreviews (props)
 
-        r = requests.get ("https://poly.googleapis.com/v1/assets", params = payload)
-        
+        r = requests.get ("https://poly.googleapis.com/v1/assets", params=payload)
         json = r.json()
-#        print (r.text)
-        print (r.url)
 
         if not 'assets' in json.keys ():
             return {'INTERFACE'}
@@ -282,15 +275,14 @@ class BlenderPolyAssetsLoad(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class BlenderPolyAssetsImport(bpy.types.Operator):
+class BlenderPolyAssetsImporter(bpy.types.Operator):
     bl_idname = "blender_poly.import"
     bl_label = "Import Operator"
 
     def execute(self, context):
-        print ("Import")
         global blender_poly_json
 
-        elem = get_element_from_json (context.window_manager.poly_model_previews_all)
+        elem = get_element_from_json (context.window_manager.poly_model_previews)
         
         obj_elem = ''
         for el in elem['formats']:
@@ -311,25 +303,25 @@ class BlenderPolyAssetsImport(bpy.types.Operator):
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(BlenderLayoutPanel)
-    bpy.utils.register_class(BlenderPolyAssetsLoad)
-    bpy.utils.register_class(BlenderPolyAssetsImport)
+    bpy.utils.register_class(BlenderPolyAssetsLoader)
+    bpy.utils.register_class(BlenderPolyAssetsImporter)
     bpy.utils.register_class(BlenderPolyPreferences)
     bpy.utils.register_class(BlenderPolyInstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
-    bpy.types.WindowManager.poly_model_previews_all = bpy.props.EnumProperty(items=enum_previews_from_model_previews_all)
+    bpy.types.WindowManager.poly_model_previews = bpy.props.EnumProperty(items=enum_previews_from_model_previews)
 
     for category in blender_poly_category_items:
         pcoll = bpy.utils.previews.new ()
-        pcoll.previews_previews_all = ()
-        pcoll.previews_previews_dir_all = ""
+        pcoll.previews_previews = ()
+        pcoll.previews_previews_dir = ""
         preview_collections [category[0]] = pcoll
 
 def unregister():
     bpy.utils.unregister_class(BlenderPolyInstallAssets)
     bpy.utils.unregister_class(BlenderPolyPreferences)
-    bpy.utils.unregister_class(BlenderPolyAssetsImport)
-    bpy.utils.unregister_class(BlenderPolyAssetsLoad)
+    bpy.utils.unregister_class(BlenderPolyAssetsImporter)
+    bpy.utils.unregister_class(BlenderPolyAssetsLoader)
     bpy.utils.unregister_class(BlenderLayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
@@ -338,7 +330,7 @@ def unregister():
     preview_collections.clear()
     
     try:
-        del bpy.types.WindowManager.poly_model_previews_all
+        del bpy.types.WindowManager.poly_model_previews
         del bpy.types.WindowManager.poly
     except:
         pass
