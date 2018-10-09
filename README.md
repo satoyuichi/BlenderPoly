@@ -17,3 +17,21 @@ Blender Poly アドオンの "Preferences" の "API Key" 欄に先ほどの API 
 
 ## ライセンス
 MIT
+
+# Blender Poly
+This is direct import from [Google Poly](https://poly.google.com/) .
+
+## Usage
+### Add API Key
+Get API key from https://developers.google.com/poly/develop/web
+
+Blender Poly Add-on's "Preferences" "API Key" input API key that get API key.  Click "Save Settings" button.
+
+### Load some information
+Input some values and click "Load" button. Downloading important data and thumbnails. **(only include .obj format data)**
+
+### Import model
+select model and click "Import" button for important model.(Not loading material)
+
+## License
+MIT
