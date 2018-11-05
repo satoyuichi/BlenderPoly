@@ -190,7 +190,14 @@ class BlenderLayoutPanel(bpy.types.Panel):
         row = layout.row(align=True)
         col = row.column()
         col.scale_y = 2.0
-        col.operator("blender_poly.load", text="Load")
+        if props.nextPageToken:
+            col.operator("blender_poly.to_head", text="Head", icon="REW")
+
+            col = row.column()
+            col.scale_y = 2.0
+            col.operator("blender_poly.load", text="Next", icon="FORWARD")
+        else:
+            col.operator("blender_poly.load", text="Load", icon="FILE_FOLDER")
 
         row = layout.row(align=True)
         col = row.column()
@@ -204,7 +211,16 @@ class BlenderLayoutPanel(bpy.types.Panel):
         
         row = layout.row(align=True)
         row.scale_y = 1.5
-        row.operator("blender_poly.import", text="Import")
+        row.operator("blender_poly.import", text="Import", icon="IMPORT")
+
+class BlenderPolyToHead(bpy.types.Operator):
+    bl_idname = "blender_poly.to_head"
+    bl_label = "To Head Operator"
+
+    def execute(self, context):
+        props = context.window_manager.poly
+        props.nextPageToken = ''
+        return {'FINISHED'}
             
 class BlenderPolyAssetsLoader(bpy.types.Operator):
     bl_idname = "blender_poly.load"
@@ -303,6 +319,7 @@ class BlenderPolyAssetsImporter(bpy.types.Operator):
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(BlenderLayoutPanel)
+    bpy.utils.register_class(BlenderPolyToHead)
     bpy.utils.register_class(BlenderPolyAssetsLoader)
     bpy.utils.register_class(BlenderPolyAssetsImporter)
     bpy.utils.register_class(BlenderPolyPreferences)
@@ -322,6 +339,7 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyPreferences)
     bpy.utils.unregister_class(BlenderPolyAssetsImporter)
     bpy.utils.unregister_class(BlenderPolyAssetsLoader)
+    bpy.utils.unregister_class(BlenderPolyToHead)
     bpy.utils.unregister_class(BlenderLayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
