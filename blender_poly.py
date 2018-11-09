@@ -2,7 +2,7 @@ bl_info = {
     "name": "Blender Poly",
     "category": "Object",
     "author": "Yuichi Sato",
-    "version": (1, 0),
+    "version": (1, 5),
     "blender": (2, 79, 0),
     "location": "Object Panel > Poly",
     "wiki_url": "https://github.com/satoyuichi/BlenderPoly",
@@ -151,6 +151,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name='Order by',
         default='BEST')
     nextPageToken = bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
+    directID = bpy.props.StringProperty(name='ID', description='Import model ID')
         
 class BlenderLayoutPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -213,6 +214,14 @@ class BlenderLayoutPanel(bpy.types.Panel):
         row.scale_y = 1.5
         row.operator("blender_poly.import", text="Import", icon="IMPORT")
 
+        row = layout.row(align=True)
+        row.label(text="Direct import:")
+        
+        row = layout.row(align=True)
+        row.prop(props, "directID")
+        row = layout.row(align=True)
+        row.operator("blender_poly.direct_import", text="Direct Import", icon="IMPORT")
+
 class BlenderPolyToHead(bpy.types.Operator):
     bl_idname = "blender_poly.to_head"
     bl_label = "To Head Operator"
@@ -220,6 +229,14 @@ class BlenderPolyToHead(bpy.types.Operator):
     def execute(self, context):
         props = context.window_manager.poly
         props.nextPageToken = ''
+        return {'FINISHED'}
+    
+class BlenderPolyDirectImport(bpy.types.Operator):
+    bl_idname = "blender_poly.direct_import"
+    bl_label = "Direct Import Operator"
+
+    def execute(self, context):
+        props = context.window_manager.poly
         return {'FINISHED'}
             
 class BlenderPolyAssetsLoader(bpy.types.Operator):
@@ -319,6 +336,7 @@ class BlenderPolyAssetsImporter(bpy.types.Operator):
 def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(BlenderLayoutPanel)
+    bpy.utils.register_class(BlenderPolyDirectImport)
     bpy.utils.register_class(BlenderPolyToHead)
     bpy.utils.register_class(BlenderPolyAssetsLoader)
     bpy.utils.register_class(BlenderPolyAssetsImporter)
@@ -340,6 +358,7 @@ def unregister():
     bpy.utils.unregister_class(BlenderPolyAssetsImporter)
     bpy.utils.unregister_class(BlenderPolyAssetsLoader)
     bpy.utils.unregister_class(BlenderPolyToHead)
+    bpy.utils.unregister_class(BlenderPolyDirectImport)
     bpy.utils.unregister_class(BlenderLayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
