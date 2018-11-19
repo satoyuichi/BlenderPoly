@@ -237,6 +237,16 @@ class BlenderPolyDirectImport(bpy.types.Operator):
 
     def execute(self, context):
         props = context.window_manager.poly
+        preferences = context.user_preferences.addons[__package__].preferences
+        
+        payload = { 'key': preferences.polyApiKey }
+        
+        r = requests.get ("https://poly.googleapis.com/v1/assets/06erPZAKJ5Z", params=payload)
+        print (r)
+        json = r.json()
+        
+        print (json)
+#        
         return {'FINISHED'}
             
 class BlenderPolyAssetsLoader(bpy.types.Operator):
@@ -324,6 +334,8 @@ class BlenderPolyAssetsImporter(bpy.types.Operator):
 
         url = obj_elem['root']['url']
         r = requests.get(url)
+        
+        print (url)
 
         file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
         with file_path.open ("w", encoding='utf-8') as f:
