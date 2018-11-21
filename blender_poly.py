@@ -96,7 +96,20 @@ def enum_previews_from_model_previews(self, context):
     pcoll.previews_previews = enum_items
     pcoll.previews_previews_dir = directory
     return pcoll.previews_previews
+
+def import_obj_by_url(context, url):
+    r = requests.get(url)
     
+    print (url)
+
+#    file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
+    file_path = get_temp_path (context).joinpath ('modeldata.obj')
+    with file_path.open ("w", encoding='utf-8') as f:
+        f.write (r.text)
+
+    bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+
+
 class BlenderPolyPreferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
@@ -240,13 +253,16 @@ class BlenderPolyDirectImport(bpy.types.Operator):
         preferences = context.user_preferences.addons[__package__].preferences
         
         payload = { 'key': preferences.polyApiKey }
+
+        r = requests.get ("https://poly.googleapis.com/v1/assets/" + props.directID, params=payload)
+        json = r.json ()
         
-        r = requests.get ("https://poly.googleapis.com/v1/assets/06erPZAKJ5Z", params=payload)
-        print (r)
-        json = r.json()
-        
-        print (json)
-#        
+        for elem in json['formats']:
+            if (elem['formatType']) == 'OBJ':
+                url = elem['root']['url']
+                import_obj_by_url (context, url)
+                break
+
         return {'FINISHED'}
             
 class BlenderPolyAssetsLoader(bpy.types.Operator):
@@ -333,15 +349,7 @@ class BlenderPolyAssetsImporter(bpy.types.Operator):
                 obj_elem = el
 
         url = obj_elem['root']['url']
-        r = requests.get(url)
-        
-        print (url)
-
-        file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
-        with file_path.open ("w", encoding='utf-8') as f:
-            f.write (r.text)
-
-        bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+        import_obj_by_url (context, url)
         
         return {'FINISHED'}
         
