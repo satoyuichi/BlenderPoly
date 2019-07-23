@@ -3,16 +3,18 @@ bl_info = {
     "category": "Object",
     "author": "Yuichi Sato",
     "version": (1, 5),
-    "blender": (2, 79, 0),
+    "blender": (2, 80, 0),
     "location": "Object Panel > Poly",
     "wiki_url": "https://github.com/satoyuichi/BlenderPoly",
 }
 
 import bpy
+import bpy.utils.previews
 import requests
 import json
 import re
 import os
+import tempfile
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -39,7 +41,7 @@ blender_poly_category_items = [
 
 def get_temp_path (context):
     props = context.window_manager.poly
-    return Path (context.user_preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+    return Path (tempfile.gettempdir()).joinpath (BLENDER_POLY_PATH, props.category_type)
 
 def get_element_from_json (id):
     global blender_poly_json
@@ -57,7 +59,7 @@ def enum_previews_from_model_previews(self, context):
         return []
 
     wm = context.window_manager
-    preferences = context.user_preferences.addons[__package__].preferences
+    preferences = context.preferences.addons[__package__].preferences
     props = context.window_manager.poly
     
     enum_items = []
@@ -107,13 +109,12 @@ def import_obj_by_url(context, url):
     with file_path.open ("w", encoding='utf-8') as f:
         f.write (r.text)
 
-    bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clamp_size=0)
+    bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
 
-
-class BlenderPolyPreferences(bpy.types.AddonPreferences):
+class BPLY_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
-    polyApiKey = bpy.props.StringProperty (
+    polyApiKey: bpy.props.StringProperty (
         name = "API Key",
         default = "",
         description = "Input the Poly's API Key",
@@ -123,16 +124,16 @@ class BlenderPolyPreferences(bpy.types.AddonPreferences):
     def draw(self, context):
         props = context.window_manager.poly
         layout = self.layout
-        preferences = context.user_preferences.addons[__package__].preferences
+        preferences = context.preferences.addons[__package__].preferences
         
         row = layout.row()
         row.prop(preferences, 'polyApiKey')
         
         row = layout.row()
         row.scale_y = 1.25
-        row.operator("scene.poly_install_assets", icon='SAVE_PREFS')
+        row.operator("scene.poly_install_assets", icon='PREFERENCES')
 
-class BlenderPolyInstallAssets(bpy.types.Operator):
+class BPLY_OT_InstallAssets(bpy.types.Operator):
     """Save the Blender Poly assets filepath"""
     bl_idname = "scene.poly_install_assets"
     bl_label = "Save Settings"
@@ -144,11 +145,11 @@ class BlenderPolyInstallAssets(bpy.types.Operator):
         return {'FINISHED'}
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
-    category_type = bpy.props.EnumProperty(
+    category_type: bpy.props.EnumProperty(
         items=blender_poly_category_items,
         name="Category Type",
         default="animals")
-    maxComplexity = bpy.props.EnumProperty(
+    maxComplexity: bpy.props.EnumProperty(
         items=[
             ('COMPLEX', 'COMPLEX', 'COMPLEX'),
             ('MEDIUM', 'MEDIUM', 'MEDIUM'),
@@ -156,22 +157,21 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         ],
         name="Max Complexity",
         default="COMPLEX")
-    keywords = bpy.props.StringProperty(name='Keywords', description='Keywords')
-    curated = bpy.props.BoolProperty(name='Curated', description='Curated')
-    pageSize = bpy.props.IntProperty(name='Page size', description='Page size', default=20, min=1, max=100)
-    orderBy = bpy.props.EnumProperty(
+    keywords: bpy.props.StringProperty(name='Keywords', description='Keywords')
+    curated: bpy.props.BoolProperty(name='Curated', description='Curated')
+    pageSize: bpy.props.IntProperty(name='Page size', description='Page size', default=20, min=1, max=100)
+    orderBy: bpy.props.EnumProperty(
         items=[('BEST', 'BEST', 'BEST'), ('NEWEST', 'NEWEST', 'NEWEST'), ('OLDEST', 'OLDEST', 'OLDEST')],
         name='Order by',
         default='BEST')
-    nextPageToken = bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
-    directID = bpy.props.StringProperty(name='ID', description='Import model ID')
+    nextPageToken: bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
+    directID: bpy.props.StringProperty(name='ID', description='Import model ID')
         
-class BlenderLayoutPanel(bpy.types.Panel):
+class BPLY_PT_LayoutPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
     bl_label = "Blender Poly"
-    bl_idname = "blender_poly_layout"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'TOOLS'
+    bl_region_type = 'UI'
     bl_category = "Create"
     bl_context = "objectmode"
 
@@ -219,9 +219,9 @@ class BlenderLayoutPanel(bpy.types.Panel):
         col.template_icon_view(wm, "poly_model_previews", show_labels=True)
         elem = get_element_from_json (context.window_manager.poly_model_previews)
         if elem == None:
-            col.label('')
+            col.label(text='')
         else:
-            col.label(elem['displayName'])
+            col.label(text=elem['displayName'])
         
         row = layout.row(align=True)
         row.scale_y = 1.5
@@ -235,7 +235,7 @@ class BlenderLayoutPanel(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("blender_poly.direct_import", text="Direct Import", icon="IMPORT")
 
-class BlenderPolyToHead(bpy.types.Operator):
+class BPLY_OT_ToHead(bpy.types.Operator):
     bl_idname = "blender_poly.to_head"
     bl_label = "To Head Operator"
 
@@ -244,13 +244,13 @@ class BlenderPolyToHead(bpy.types.Operator):
         props.nextPageToken = ''
         return {'FINISHED'}
     
-class BlenderPolyDirectImport(bpy.types.Operator):
+class BPLY_OT_DirectImport(bpy.types.Operator):
     bl_idname = "blender_poly.direct_import"
     bl_label = "Direct Import Operator"
 
     def execute(self, context):
         props = context.window_manager.poly
-        preferences = context.user_preferences.addons[__package__].preferences
+        preferences = context.preferences.addons[__package__].preferences
         
         payload = { 'key': preferences.polyApiKey }
 
@@ -265,7 +265,7 @@ class BlenderPolyDirectImport(bpy.types.Operator):
 
         return {'FINISHED'}
             
-class BlenderPolyAssetsLoader(bpy.types.Operator):
+class BPLY_OT_AssetsLoader(bpy.types.Operator):
     bl_idname = "blender_poly.load"
     bl_label = "Load Operator"
     
@@ -288,7 +288,7 @@ class BlenderPolyAssetsLoader(bpy.types.Operator):
 
             if not filepath.exists ():
                 thumbnail = requests.get (asset['thumbnail']['url'])
-                with thumbnail_path.joinpath (filepath).open (mode='wb') as f:
+                with filepath.open (mode='wb') as f:
                     f.write (thumbnail.content)
 
     def recreatePreviews (self, props):
@@ -300,7 +300,7 @@ class BlenderPolyAssetsLoader(bpy.types.Operator):
         pcoll.previews_previews_dir = ""
 
     def execute(self, context):
-        if not __package__ in context.user_preferences.addons.keys ():
+        if not __package__ in context.preferences.addons.keys ():
             return {'FINISHED'}       
 
         tmp_path = get_temp_path (context)
@@ -312,7 +312,7 @@ class BlenderPolyAssetsLoader(bpy.types.Operator):
             tmp_path.mkdir (parents=True)
 
         props = context.window_manager.poly
-        preferences = context.user_preferences.addons[__package__].preferences
+        preferences = context.preferences.addons[__package__].preferences
         payload = self.getPayload(preferences, props)
 
         self.recreatePreviews (props)
@@ -334,7 +334,7 @@ class BlenderPolyAssetsLoader(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class BlenderPolyAssetsImporter(bpy.types.Operator):
+class BPLY_OT_AssetsImporter(bpy.types.Operator):
     bl_idname = "blender_poly.import"
     bl_label = "Import Operator"
 
@@ -355,13 +355,13 @@ class BlenderPolyAssetsImporter(bpy.types.Operator):
         
 def register():
     bpy.utils.register_class(BlenderPolyProps)
-    bpy.utils.register_class(BlenderLayoutPanel)
-    bpy.utils.register_class(BlenderPolyDirectImport)
-    bpy.utils.register_class(BlenderPolyToHead)
-    bpy.utils.register_class(BlenderPolyAssetsLoader)
-    bpy.utils.register_class(BlenderPolyAssetsImporter)
-    bpy.utils.register_class(BlenderPolyPreferences)
-    bpy.utils.register_class(BlenderPolyInstallAssets)
+    bpy.utils.register_class(BPLY_PT_LayoutPanel)
+    bpy.utils.register_class(BPLY_OT_DirectImport)
+    bpy.utils.register_class(BPLY_OT_ToHead)
+    bpy.utils.register_class(BPLY_OT_AssetsLoader)
+    bpy.utils.register_class(BPLY_OT_AssetsImporter)
+    bpy.utils.register_class(BPLY_Preferences)
+    bpy.utils.register_class(BPLY_OT_InstallAssets)
     
     bpy.types.WindowManager.poly = bpy.props.PointerProperty(type=BlenderPolyProps)
     bpy.types.WindowManager.poly_model_previews = bpy.props.EnumProperty(items=enum_previews_from_model_previews)
@@ -373,13 +373,13 @@ def register():
         preview_collections [category[0]] = pcoll
 
 def unregister():
-    bpy.utils.unregister_class(BlenderPolyInstallAssets)
-    bpy.utils.unregister_class(BlenderPolyPreferences)
-    bpy.utils.unregister_class(BlenderPolyAssetsImporter)
-    bpy.utils.unregister_class(BlenderPolyAssetsLoader)
-    bpy.utils.unregister_class(BlenderPolyToHead)
-    bpy.utils.unregister_class(BlenderPolyDirectImport)
-    bpy.utils.unregister_class(BlenderLayoutPanel)
+    bpy.utils.unregister_class(BPLY_OT_InstallAssets)
+    bpy.utils.unregister_class(BPLY_Preferences)
+    bpy.utils.unregister_class(BPLY_OT_AssetsImporter)
+    bpy.utils.unregister_class(BPLY_OT_AssetsLoader)
+    bpy.utils.unregister_class(BPLY_OT_ToHead)
+    bpy.utils.unregister_class(BPLY_OT_DirectImport)
+    bpy.utils.unregister_class(BPLY_PT_LayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
 
     for pcoll in preview_collections.values():
