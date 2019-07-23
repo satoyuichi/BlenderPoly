@@ -14,6 +14,7 @@ import requests
 import json
 import re
 import os
+import tempfile
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -40,7 +41,7 @@ blender_poly_category_items = [
 
 def get_temp_path (context):
     props = context.window_manager.poly
-    return Path (context.preferences.filepaths.temporary_directory).joinpath (BLENDER_POLY_PATH, props.category_type)
+    return Path (tempfile.gettempdir()).joinpath (BLENDER_POLY_PATH, props.category_type)
 
 def get_element_from_json (id):
     global blender_poly_json
