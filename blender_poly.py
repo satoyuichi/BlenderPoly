@@ -247,6 +247,9 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
 
         row = box.row(align=True)
         row.label(text="Random placement:")
+        
+        row = box.row(align=True)
+        row.prop(props, "category_type")        
 
         row = box.row(align=True)
         row.prop(props, "placementNumber")
@@ -290,7 +293,7 @@ class BPLY_OT_RandomPlacement(bpy.types.Operator):
     bl_label = "Random Placement Operator"
     
     def execute(self, context):
-        props = context.window_manager.poly    
+        props = context.window_manager.poly
     
         return {'FINISHED'}
             
