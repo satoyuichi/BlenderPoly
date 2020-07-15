@@ -119,7 +119,17 @@ def import_obj_by_url(context, url, relativePath):
     with file_path.open ("w", encoding='utf-8') as f:
         f.write (r.text)
 
+    # Create empty and initialize
+    bpy.ops.object.empty_add()
+    empty = context.active_object
+    empty.name = get_element_from_json (context.window_manager.poly_model_previews)['displayName']
+    empty.location[0] = 0.0
+    empty.location[1] = 0.0
+    empty.location[2] = 0.0
+    
+    # Import obj
     bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
+    bpy.ops.object.parent_set()
 
 def import_obj_and_mtl(context, json):
     # Load mtl
