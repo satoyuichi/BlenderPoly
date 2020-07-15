@@ -101,18 +101,37 @@ def enum_previews_from_model_previews(self, context):
     pcoll.previews_previews_dir = directory
     return pcoll.previews_previews
 
-def import_obj_by_url(context, url):
+def import_mtl_by_url(context, url, relativePath):
     r = requests.get(url)
     
     print (url)
 
-#    file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
-    file_path = get_temp_path (context).joinpath ('modeldata.obj')
+    file_path = get_temp_path (context).joinpath (relativePath)
+    with file_path.open ("w", encoding='utf-8') as f:
+        f.write (r.text)
+
+def import_obj_by_url(context, url, relativePath):
+    r = requests.get(url)
+    
+    print (url)
+
+    file_path = get_temp_path (context).joinpath (relativePath)
     with file_path.open ("w", encoding='utf-8') as f:
         f.write (r.text)
 
     bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
 
+def import_obj_and_mtl(context, json):
+    # Load mtl
+    url = json['resources'][0]['url']
+    relativePath = json['resources'][0]['relativePath']
+    import_mtl_by_url (context, url, relativePath)
+    
+    # Load obj
+    url = json['root']['url']
+    relativePath = json['root']['relativePath']
+    import_obj_by_url (context, url, relativePath)
+        
 class BPLY_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
@@ -261,8 +280,7 @@ class BPLY_OT_DirectImport(bpy.types.Operator):
         
         for elem in json['formats']:
             if (elem['formatType']) == 'OBJ':
-                url = elem['root']['url']
-                import_obj_by_url (context, url)
+                import_obj_and_mtl (context, elem)
                 break
 
         return {'FINISHED'}
@@ -350,8 +368,7 @@ class BPLY_OT_AssetsImporter(bpy.types.Operator):
             if el['formatType'] == 'OBJ':
                 obj_elem = el
 
-        url = obj_elem['root']['url']
-        import_obj_by_url (context, url)
+        import_obj_and_mtl(context, obj_elem)
         
         return {'FINISHED'}
         
