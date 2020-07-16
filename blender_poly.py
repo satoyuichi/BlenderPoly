@@ -197,6 +197,8 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         default='BEST')
     nextPageToken: bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
     directID: bpy.props.StringProperty(name='ID', description='Import model ID')
+    placementNumber: bpy.props.IntProperty(name='Number', min=1, description='Number of random placements')
+    unique: bpy.props.BoolProperty(name='Unique', description='Unique')
         
 class BPLY_PT_LayoutPanel(bpy.types.Panel):
     """Creates a Panel in the scene context of the properties editor"""
@@ -258,14 +260,33 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         row.scale_y = 1.5
         row.operator("blender_poly.import", text="Import", icon="IMPORT")
 
-        row = layout.row(align=True)
+        # Direct import
+        box = layout.box()
+
+        row = box.row(align=True)
         row.label(text="Direct import:")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "directID")
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.operator("blender_poly.direct_import", text="Direct Import", icon="IMPORT")
+        
+        # Random placement       
+        box = layout.box()
 
+        row = box.row(align=True)
+        row.label(text="Random placement:")
+        
+        row = box.row(align=True)
+        row.prop(props, "category_type")        
+
+        row = box.row(align=True)
+        row.prop(props, "placementNumber")
+        row.prop(props, "unique")
+        
+        row = box.row(align=True)
+        row.operator("blender_poly.random_placement", text="Random Placement", icon="OBJECT_DATA")
+                
 class BPLY_OT_ToHead(bpy.types.Operator):
     bl_idname = "blender_poly.to_head"
     bl_label = "To Head Operator"
@@ -293,6 +314,15 @@ class BPLY_OT_DirectImport(bpy.types.Operator):
                 import_obj_and_mtl (context, elem)
                 break
 
+        return {'FINISHED'}
+
+class BPLY_OT_RandomPlacement(bpy.types.Operator):
+    bl_idname = "blender_poly.random_placement"
+    bl_label = "Random Placement Operator"
+    
+    def execute(self, context):
+        props = context.window_manager.poly
+    
         return {'FINISHED'}
             
 class BPLY_OT_AssetsLoader(bpy.types.Operator):
@@ -386,6 +416,7 @@ def register():
     bpy.utils.register_class(BlenderPolyProps)
     bpy.utils.register_class(BPLY_PT_LayoutPanel)
     bpy.utils.register_class(BPLY_OT_DirectImport)
+    bpy.utils.register_class(BPLY_OT_RandomPlacement)
     bpy.utils.register_class(BPLY_OT_ToHead)
     bpy.utils.register_class(BPLY_OT_AssetsLoader)
     bpy.utils.register_class(BPLY_OT_AssetsImporter)
@@ -407,6 +438,7 @@ def unregister():
     bpy.utils.unregister_class(BPLY_OT_AssetsImporter)
     bpy.utils.unregister_class(BPLY_OT_AssetsLoader)
     bpy.utils.unregister_class(BPLY_OT_ToHead)
+    bpy.utils.unregister_class(BPLY_OT_RandomPlacement)
     bpy.utils.unregister_class(BPLY_OT_DirectImport)
     bpy.utils.unregister_class(BPLY_PT_LayoutPanel)
     bpy.utils.unregister_class(BlenderPolyProps)
