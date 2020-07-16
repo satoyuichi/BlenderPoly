@@ -130,6 +130,10 @@ def import_obj_by_url(context, url, relativePath):
     # Import obj
     bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
     bpy.ops.object.parent_set()
+    
+    # Set active only empty
+    bpy.ops.object.select_all(action='DESELECT')
+    empty.select_set(True)
 
 def import_obj_and_mtl(context, json):
     # Load mtl
