@@ -220,25 +220,28 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
 
         scene = context.scene
         
-        row = layout.row(align=True)
+        # Normal import
+        box = layout.box()
+        
+        row = box.row(align=True)
         row.prop(props, "category_type")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "maxComplexity")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "orderBy")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "pageSize")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "curated")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "keywords")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         col = row.column()
         col.scale_y = 2.0
         if props.nextPageToken:
@@ -250,7 +253,7 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         else:
             col.operator("blender_poly.load", text="Load", icon="FILE_FOLDER")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         col = row.column()
         col.scale_y = 1
         col.template_icon_view(wm, "poly_model_previews", show_labels=True)
@@ -260,16 +263,19 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         else:
             col.label(text=elem['displayName'])
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.scale_y = 1.5
         row.operator("blender_poly.import", text="Import", icon="IMPORT")
 
-        row = layout.row(align=True)
+        # Direct import
+        box = layout.box()
+        
+        row = box.row(align=True)
         row.label(text="Direct import:")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "directID")
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.operator("blender_poly.direct_import", text="Direct Import", icon="IMPORT")
 
 class BPLY_OT_ToHead(bpy.types.Operator):
