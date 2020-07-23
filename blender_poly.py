@@ -182,9 +182,23 @@ class BPLY_OT_InstallAssets(bpy.types.Operator):
         return {'FINISHED'}
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
+    # Select empty pivot
+    emptyPivot: bpy.props.EnumProperty(
+        items=[
+            ('X Min', 'X Min', 'X Min'),
+            ('X Max', 'X Max', 'X Max'),
+            ('Y Min', 'Y Min', 'Y Min'),
+            ('Y Max', 'Y Max', 'Y Max'),
+            ('Z Min', 'Z Min', 'Z Min'),
+            ('Z Max', 'Z Max', 'Z Max'),
+        ],
+        name="Empty pivot",
+        default="Z Min")
+    
+    # Normal import
     category_type: bpy.props.EnumProperty(
         items=blender_poly_category_items,
-        name="Category Type",
+        name="Category type",
         default="animals")
     maxComplexity: bpy.props.EnumProperty(
         items=[
@@ -192,7 +206,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
             ('MEDIUM', 'MEDIUM', 'MEDIUM'),
             ('SIMPLE', 'SIMPLE', 'SIMPLE')
         ],
-        name="Max Complexity",
+        name="Max complexity",
         default="COMPLEX")
     keywords: bpy.props.StringProperty(name='Keywords', description='Keywords')
     curated: bpy.props.BoolProperty(name='Curated', description='Curated')
@@ -202,6 +216,8 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name='Order by',
         default='BEST')
     nextPageToken: bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
+    
+    # Direct import
     directID: bpy.props.StringProperty(name='ID', description='Import model ID')
         
 class BPLY_PT_LayoutPanel(bpy.types.Panel):
@@ -219,6 +235,11 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         wm = context.window_manager
 
         scene = context.scene
+
+        box = layout.box()
+        
+        row = box.row(align=True)
+        row.prop(props, "emptyPivot")
         
         # Normal import
         box = layout.box()
