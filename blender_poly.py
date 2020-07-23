@@ -134,6 +134,8 @@ def import_obj_by_url(context, url, relativePath):
     # Set active only empty
     bpy.ops.object.select_all(action='DESELECT')
     empty.select_set(True)
+    
+    empty.show_name = True
 
 def import_obj_and_mtl(context, json):
     # Load mtl
