@@ -2,7 +2,7 @@ bl_info = {
     "name": "Blender Poly",
     "category": "Object",
     "author": "Yuichi Sato",
-    "version": (1, 5),
+    "version": (2, 0),
     "blender": (2, 80, 0),
     "location": "Object Panel > Poly",
     "wiki_url": "https://github.com/satoyuichi/BlenderPoly",
