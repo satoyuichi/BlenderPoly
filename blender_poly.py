@@ -2,7 +2,7 @@ bl_info = {
     "name": "Blender Poly",
     "category": "Object",
     "author": "Yuichi Sato",
-    "version": (1, 5),
+    "version": (2, 0),
     "blender": (2, 80, 0),
     "location": "Object Panel > Poly",
     "wiki_url": "https://github.com/satoyuichi/BlenderPoly",
@@ -15,6 +15,7 @@ import json
 import re
 import os
 import tempfile
+import sys
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -29,10 +30,12 @@ blender_poly_category_items = [
     ('current_events', 'Current events', 'current_events'),
     ('food', 'Food and Drink', 'food'),
     ('furniture_home', 'Furniture and Home', 'furniture_home'),
+    ('history', 'history', 'history'),
     ('nature', 'Nature', 'nature'),
     ('objects', 'Objects', 'objects'),
     ('people', 'People and Characters', 'people'),
     ('scenes', 'Places and Scenes', 'scenes'),
+    ('science', 'Science', 'science'),
     ('sports_fitness', 'Sports and Fitness', 'sports_fitness'),
     ('tech', 'Technology', 'tech'),
     ('transport', 'Transport', 'transport'),
@@ -99,18 +102,82 @@ def enum_previews_from_model_previews(self, context):
     pcoll.previews_previews_dir = directory
     return pcoll.previews_previews
 
-def import_obj_by_url(context, url):
+def import_mtl_by_url(context, url, relativePath):
     r = requests.get(url)
     
     print (url)
 
-#    file_path = get_temp_path (context).joinpath (obj_elem['root']['relativePath'])
-    file_path = get_temp_path (context).joinpath ('modeldata.obj')
+    file_path = get_temp_path (context).joinpath (relativePath)
     with file_path.open ("w", encoding='utf-8') as f:
         f.write (r.text)
 
-    bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
+def import_obj_by_url(context, url, relativePath):
+    r = requests.get(url)
+    
+    print (url)
 
+    file_path = get_temp_path (context).joinpath (relativePath)
+    with file_path.open ("w", encoding='utf-8') as f:
+        f.write (r.text)
+
+    # Create empty and initialize
+    bpy.ops.object.empty_add()
+    empty = context.active_object
+    empty.name = get_element_from_json (context.window_manager.poly_model_previews)['displayName']
+    empty.show_name = True
+    
+    # Import obj
+    bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
+    bpy.ops.object.transform_apply(rotation=True)
+
+    # Set empty location
+#        props = context.window_manager.poly.emptyPivot
+    emptyPivot = context.window_manager.poly.emptyPivot
+
+    # Initialize
+    empty.location[0] = 0.0
+    empty.location[1] = 0.0
+    empty.location[2] = 0.0
+    pivot_index = 2
+    pivot_coord = 0.0
+
+    if emptyPivot == 'x_min' or emptyPivot == 'x_max':
+        pivot_index = 0
+    elif emptyPivot == 'y_min' or emptyPivot == 'y_max':
+        pivot_index = 1
+    else:
+        pivot_index = 2
+
+    if emptyPivot == 'x_min' or emptyPivot == 'y_min' or emptyPivot == 'z_min':
+        pivot_coord = sys.maxsize
+        for child in context.selected_objects:
+            for coord in child.bound_box:
+                pivot_coord = coord[pivot_index] if (pivot_coord > coord[pivot_index]) else pivot_coord
+    else:
+        pivot_coord = -sys.maxsize
+        for child in context.selected_objects:
+            for coord in child.bound_box:
+                pivot_coord = coord[pivot_index] if (pivot_coord < coord[pivot_index]) else pivot_coord
+    
+    empty.location[pivot_index] = pivot_coord
+
+    bpy.ops.object.parent_set()
+    
+    # Set active only empty
+    bpy.ops.object.select_all(action='DESELECT')
+    empty.select_set(True)
+    
+def import_obj_and_mtl(context, json):
+    # Load mtl
+    url = json['resources'][0]['url']
+    relativePath = json['resources'][0]['relativePath']
+    import_mtl_by_url (context, url, relativePath)
+    
+    # Load obj
+    url = json['root']['url']
+    relativePath = json['root']['relativePath']
+    import_obj_by_url (context, url, relativePath)
+        
 class BPLY_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
@@ -145,9 +212,23 @@ class BPLY_OT_InstallAssets(bpy.types.Operator):
         return {'FINISHED'}
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
+    # Select empty pivot
+    emptyPivot: bpy.props.EnumProperty(
+        items=[
+            ('x_min', 'X Min', 'X Min'),
+            ('x_max', 'X Max', 'X Max'),
+            ('y_min', 'Y Min', 'Y Min'),
+            ('y_max', 'Y Max', 'Y Max'),
+            ('z_min', 'Z Min', 'Z Min'),
+            ('z_max', 'Z Max', 'Z Max'),
+        ],
+        name="Empty pivot",
+        default="z_min")
+    
+    # Normal import
     category_type: bpy.props.EnumProperty(
         items=blender_poly_category_items,
-        name="Category Type",
+        name="Category type",
         default="animals")
     maxComplexity: bpy.props.EnumProperty(
         items=[
@@ -155,7 +236,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
             ('MEDIUM', 'MEDIUM', 'MEDIUM'),
             ('SIMPLE', 'SIMPLE', 'SIMPLE')
         ],
-        name="Max Complexity",
+        name="Max complexity",
         default="COMPLEX")
     keywords: bpy.props.StringProperty(name='Keywords', description='Keywords')
     curated: bpy.props.BoolProperty(name='Curated', description='Curated')
@@ -165,6 +246,8 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name='Order by',
         default='BEST')
     nextPageToken: bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
+    
+    # Direct import
     directID: bpy.props.StringProperty(name='ID', description='Import model ID')
         
 class BPLY_PT_LayoutPanel(bpy.types.Panel):
@@ -182,26 +265,34 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         wm = context.window_manager
 
         scene = context.scene
+
+        box = layout.box()
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
+        row.prop(props, "emptyPivot")
+        
+        # Normal import
+        box = layout.box()
+        
+        row = box.row(align=True)
         row.prop(props, "category_type")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "maxComplexity")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "orderBy")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "pageSize")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "curated")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "keywords")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         col = row.column()
         col.scale_y = 2.0
         if props.nextPageToken:
@@ -213,7 +304,7 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         else:
             col.operator("blender_poly.load", text="Load", icon="FILE_FOLDER")
 
-        row = layout.row(align=True)
+        row = box.row(align=True)
         col = row.column()
         col.scale_y = 1
         col.template_icon_view(wm, "poly_model_previews", show_labels=True)
@@ -223,16 +314,19 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         else:
             col.label(text=elem['displayName'])
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.scale_y = 1.5
         row.operator("blender_poly.import", text="Import", icon="IMPORT")
 
-        row = layout.row(align=True)
+        # Direct import
+        box = layout.box()
+        
+        row = box.row(align=True)
         row.label(text="Direct import:")
         
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.prop(props, "directID")
-        row = layout.row(align=True)
+        row = box.row(align=True)
         row.operator("blender_poly.direct_import", text="Direct Import", icon="IMPORT")
 
 class BPLY_OT_ToHead(bpy.types.Operator):
@@ -259,8 +353,7 @@ class BPLY_OT_DirectImport(bpy.types.Operator):
         
         for elem in json['formats']:
             if (elem['formatType']) == 'OBJ':
-                url = elem['root']['url']
-                import_obj_by_url (context, url)
+                import_obj_and_mtl (context, elem)
                 break
 
         return {'FINISHED'}
@@ -348,8 +441,7 @@ class BPLY_OT_AssetsImporter(bpy.types.Operator):
             if el['formatType'] == 'OBJ':
                 obj_elem = el
 
-        url = obj_elem['root']['url']
-        import_obj_by_url (context, url)
+        import_obj_and_mtl(context, obj_elem)
         
         return {'FINISHED'}
         

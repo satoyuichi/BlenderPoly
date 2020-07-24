@@ -16,7 +16,7 @@ https://developers.google.com/poly/develop/web の "Get an API Key" から API �
 "Head" ボタンを押すと最初の候補に戻ります。
 
 ### モデルのインポート
-モデルを選択して "Import" ボタンを押すと、モデルがインポートされます。（マテリアルなどは読み込まれません）
+モデルを選択して "Import" ボタンを押すと、モデルがインポートされます。
 
 ## ダイレクトインポート
 [Google Poly](https://poly.google.com/) の ID から直接インポートをします。

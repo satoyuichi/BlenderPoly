@@ -16,7 +16,7 @@ If model count more than input `Page size:`, click "Load" button again to loadin
 Click "Head" button go to head the lists.
 
 ### Import model
-Chose model and click "Import" button.(Not load material etc)
+Chose model and click "Import" button.
 
 ## Direct import
 Direct import by ID of [Google Poly](https://poly.google.com/).
