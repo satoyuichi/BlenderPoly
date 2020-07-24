@@ -15,6 +15,7 @@ import json
 import re
 import os
 import tempfile
+import sys
 from pathlib import Path
 
 __package__ = "blender_poly"
@@ -123,20 +124,49 @@ def import_obj_by_url(context, url, relativePath):
     bpy.ops.object.empty_add()
     empty = context.active_object
     empty.name = get_element_from_json (context.window_manager.poly_model_previews)['displayName']
-    empty.location[0] = 0.0
-    empty.location[1] = 0.0
-    empty.location[2] = 0.0
+    empty.show_name = True
     
     # Import obj
     bpy.ops.import_scene.obj(filepath=str(file_path), axis_forward='-Z', axis_up='Y', filter_glob="*.obj;*.mtl", use_edges=True, use_smooth_groups=True, use_split_objects=True, use_split_groups=True, use_groups_as_vgroups=False, use_image_search=True, split_mode='ON', global_clight_size=0)
+    bpy.ops.object.transform_apply(rotation=True)
+
+    # Set empty location
+#        props = context.window_manager.poly.emptyPivot
+    emptyPivot = context.window_manager.poly.emptyPivot
+
+    # Initialize
+    empty.location[0] = 0.0
+    empty.location[1] = 0.0
+    empty.location[2] = 0.0
+    pivot_index = 2
+    pivot_coord = 0.0
+
+    if emptyPivot == 'x_min' or emptyPivot == 'x_max':
+        pivot_index = 0
+    elif emptyPivot == 'y_min' or emptyPivot == 'y_max':
+        pivot_index = 1
+    else:
+        pivot_index = 2
+
+    if emptyPivot == 'x_min' or emptyPivot == 'y_min' or emptyPivot == 'z_min':
+        pivot_coord = sys.maxsize
+        for child in context.selected_objects:
+            for coord in child.bound_box:
+                pivot_coord = coord[pivot_index] if (pivot_coord > coord[pivot_index]) else pivot_coord
+    else:
+        pivot_coord = -sys.maxsize
+        for child in context.selected_objects:
+            for coord in child.bound_box:
+                pivot_coord = coord[pivot_index] if (pivot_coord < coord[pivot_index]) else pivot_coord
+    
+    empty.location[pivot_index] = pivot_coord
+
     bpy.ops.object.parent_set()
     
     # Set active only empty
     bpy.ops.object.select_all(action='DESELECT')
     empty.select_set(True)
     
-    empty.show_name = True
-
 def import_obj_and_mtl(context, json):
     # Load mtl
     url = json['resources'][0]['url']
@@ -182,9 +212,23 @@ class BPLY_OT_InstallAssets(bpy.types.Operator):
         return {'FINISHED'}
     
 class BlenderPolyProps(bpy.types.PropertyGroup):
+    # Select empty pivot
+    emptyPivot: bpy.props.EnumProperty(
+        items=[
+            ('x_min', 'X Min', 'X Min'),
+            ('x_max', 'X Max', 'X Max'),
+            ('y_min', 'Y Min', 'Y Min'),
+            ('y_max', 'Y Max', 'Y Max'),
+            ('z_min', 'Z Min', 'Z Min'),
+            ('z_max', 'Z Max', 'Z Max'),
+        ],
+        name="Empty pivot",
+        default="z_min")
+    
+    # Normal import
     category_type: bpy.props.EnumProperty(
         items=blender_poly_category_items,
-        name="Category Type",
+        name="Category type",
         default="animals")
     maxComplexity: bpy.props.EnumProperty(
         items=[
@@ -192,7 +236,7 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
             ('MEDIUM', 'MEDIUM', 'MEDIUM'),
             ('SIMPLE', 'SIMPLE', 'SIMPLE')
         ],
-        name="Max Complexity",
+        name="Max complexity",
         default="COMPLEX")
     keywords: bpy.props.StringProperty(name='Keywords', description='Keywords')
     curated: bpy.props.BoolProperty(name='Curated', description='Curated')
@@ -202,6 +246,8 @@ class BlenderPolyProps(bpy.types.PropertyGroup):
         name='Order by',
         default='BEST')
     nextPageToken: bpy.props.StringProperty(name='nextPageToken', default='', description='Token')
+    
+    # Direct import
     directID: bpy.props.StringProperty(name='ID', description='Import model ID')
         
 class BPLY_PT_LayoutPanel(bpy.types.Panel):
@@ -219,6 +265,11 @@ class BPLY_PT_LayoutPanel(bpy.types.Panel):
         wm = context.window_manager
 
         scene = context.scene
+
+        box = layout.box()
+        
+        row = box.row(align=True)
+        row.prop(props, "emptyPivot")
         
         # Normal import
         box = layout.box()
